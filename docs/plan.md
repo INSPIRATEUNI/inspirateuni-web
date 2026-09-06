@@ -88,8 +88,8 @@ El objetivo es establecer un flujo de trabajo donde la infraestructura como cód
 
 **Issue 1.0: Bootstrapping y Estandarización del Repositorio**
 
-- Rol: DevOps (Tech Lead)
-- Configuración de githooks para forzar la nomenclatura de Conventional Commits.
+- **Rol: DevOps (Tech Lead)**
+- Configuración de githooks para forzar la nomenclatura de Conventional Commits y la ramificación según GitHub Flow.
 - Implementación de workflows de GitHub Actions para el movimiento automático de tarjetas en el Kanban.
 - Creación de un Makefile para estandarizar y acelerar la inicialización del entorno local de los colaboradores.
 - Estructuración de directorios base con archivos .gitkeep.
@@ -98,6 +98,7 @@ El objetivo es establecer un flujo de trabajo donde la infraestructura como cód
 
 **Issue 1.1: Inicialización del Monorepo y Ecosistema Frontend**
 
+- **Rol: DevOps / Frontend**
 - Crear proyecto Next.js (App Router) con TypeScript.
 - Configurar Tailwind CSS de forma estricta (deshabilitar colores innecesarios, definir paleta de la agrupación).
 - Integrar `shadcn/ui` o componentes base accesibles para evitar la fragmentación de estilos (cero dependencias a Bootstrap o MUI).
@@ -105,18 +106,21 @@ El objetivo es establecer un flujo de trabajo donde la infraestructura como cód
 
 **Issue 1.2: Configuración de la Fuente de Verdad Declarativa (Base de Datos)**
 
+- **Rol: DevOps / Backend**
 - Inicializar Supabase CLI localmente (`supabase init`).
 - Establecer que **todas** las modificaciones a la base de datos deben realizarse mediante archivos SQL en `supabase/migrations/` (prohibido usar la UI web de Supabase para alterar esquemas en producción).
 - Crear el archivo `0000_initial_schema.sql` definiendo los esquemas básicos (`public`, extensiones necesarias).
 
 **Issue 1.3: Automatización de Pruebas en Entorno Local (Pre-commit)**
 
+- **Rol: DevOps**
 - Configurar Husky y lint-staged.
 - Frontend: Reglas de ESLint, Prettier y chequeo de tipos estáticos (`tsc --noEmit`) en archivos modificados antes de cada commit.
 - Backend/DB: Script local que levante contenedores de Supabase (`supabase start`) y ejecute pruebas unitarias SQL (pgTAP) en local antes de permitir un push a las ramas principales.
 
 **Issue 1.4: CI/CD Pipelines en GitHub Actions**
 
+- **Rol: DevOps**
 - Crear `.github/workflows/ci.yml` que se dispare en PRs hacia `main` o `develop`.
 - Job 1 (Frontend): Instalar dependencias, ejecutar linter, build de Next.js (pruebas de compilación).
 - Job 2 (Backend): Instalar Supabase CLI, arrancar instancia efímera de DB, aplicar migraciones y ejecutar tests pgTAP. El PR debe bloquearse si algún job falla.
@@ -127,18 +131,21 @@ Construcción segura y escalable del modelo de datos para la Intranet, gestionad
 
 **Issue 2.1: Migración Declarativa - Tabla de Usuarios y Perfiles**
 
+- **Rol: Backend**
 - Crear migración `0001_create_profiles.sql`.
 - Vincular mediante triggers la tabla nativa `auth.users` de Supabase con una tabla pública `profiles` (id, rol, nombre completo, carrera).
 - Implementar función SQL (Trigger) que inserte un registro en `profiles` automáticamente al registrarse un usuario en `auth`.
 
 **Issue 2.2: Migración Declarativa - Tablas de Registro de Horas**
 
+- **Rol: Backend**
 - Crear migración `0002_volunteer_hours.sql`.
 - Crear tabla `extracurricular_hours` (id, volunteer_id, event_name, hours_logged, date, status [pending, approved, rejected], notes).
 - Definir claves foráneas estrictas y restricciones (ej. hours_logged > 0).
 
 **Issue 2.3: Implementación de Políticas de Seguridad (RLS)**
 
+- **Rol: Backend**
 - Crear migración `0003_rls_policies.sql`.
 - Habilitar Row Level Security en `profiles` y `extracurricular_hours`.
 - Política 1: Un voluntario solo puede hacer SELECT/INSERT de sus propios registros en `extracurricular_hours` (`auth.uid() = volunteer_id`).
@@ -146,6 +153,7 @@ Construcción segura y escalable del modelo de datos para la Intranet, gestionad
 
 **Issue 2.4: Pruebas Unitarias de Base de Datos (pgTAP)**
 
+- **Rol: Backend**
 - Escribir scripts de test en `supabase/tests/database/`.
 - Testear que el trigger de creación de perfiles funciona.
 - Testear que un usuario no autenticado no puede leer horas.
@@ -157,18 +165,21 @@ Desarrollo de las interfaces públicas aplicando principios de no repetición (D
 
 **Issue 3.1: Layout Global y Componentes Core**
 
+- **Rol: Frontend**
 - Desarrollar `<Header />` y `<Footer />` responsivos usando Tailwind.
 - Implementar el enrutador principal en el `layout.tsx` raíz.
 - Construir sistema de tipografía y botones globales para mantener consistencia.
 
 **Issue 3.2: Componente Dinámico de Galería (Abstracción DRY)**
 
+- **Rol: Frontend**
 - Crear un componente reutilizable `<GalleryTemplate data={...} />` para renderizar eventos y programas.
 - Integrar Framer Motion para las transiciones modales, asegurando que el componente acepte contenido agnóstico (imágenes, descripciones, fechas) por props.
 - Eliminar la necesidad de crear archivos de vistas idénticos para cada tipo de evento.
 
 **Issue 3.3: Integración de la Página de Inicio y Eventos**
 
+- **Rol: Frontend**
 - Maquetar la landing page pública (ruta `/`).
 - Implementar el carrusel de bienvenida (optimizado para SSR y carga de imágenes con `next/image`).
 - Consumir datos estáticos (o desde Supabase) para poblar el `<GalleryTemplate />` en la ruta `/eventos`.
@@ -179,23 +190,27 @@ Construcción del sistema cerrado para voluntarios y conexión con la base de da
 
 **Issue 4.1: Flujo de Autenticación (Supabase SSR)**
 
+- **Rol: Frontend**
 - Instalar y configurar `@supabase/ssr` para Next.js.
 - Crear vista de Login (`/login`) y manejar la creación de sesiones mediante JWT.
 - Configurar un Middleware en Next.js (`middleware.ts`) para proteger las rutas bajo `/intranet/*`. Si no hay sesión, redirigir al login.
 
 **Issue 4.2: Dashboard de la Intranet y Contexto Global**
 
+- **Rol: Frontend**
 - Crear el Layout de la intranet con una barra de navegación lateral.
 - Implementar obtención de datos del usuario logueado en el servidor (Server Component) para mostrar un saludo y su rol.
 
 **Issue 4.3: Formulario de Registro de Horas (Cliente a Base de Datos)**
 
+- **Rol: Frontend**
 - Crear interfaz del formulario en `/intranet/horas/registrar`.
 - Usar React Hook Form y Zod para validación del lado del cliente (nombre del evento, cantidad de horas, fecha).
 - Conectar el formulario a la base de datos ejecutando inserciones autenticadas hacia la tabla `extracurricular_hours`.
 
 **Issue 4.4: Tabla de Visualización de Horas Personales**
 
+- **Rol: Frontend**
 - Crear vista `/intranet/horas/historial`.
 - Realizar consulta Server-Side a Supabase para obtener el historial del voluntario (gracias a RLS, la consulta es `select * from extracurricular_hours` y la DB filtra automáticamente).
 - Mostrar los datos en una tabla estilizada con Tailwind, indicando el estado (Pendiente/Aprobado) con colores (Badges).
@@ -213,18 +228,21 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 
 **Issue 2.1: Migración Declarativa - Catálogo de Facultades y Carreras**
 
+- **Rol: Backend**
 - Crear migración `0004_faculties_and_careers.sql`.
 - Definir tablas `faculties` (id, nombre) y `careers` (id, faculty_id, nombre).
 - Insertar los datos estáticos de la universidad mediante un script SQL inicial para ser consumidos por el cliente.
 
 **Issue 2.2: Migración Declarativa - Disponibilidad de Voluntarios**
 
+- **Rol: Backend**
 - Crear migración `0005_volunteer_availability.sql`.
 - Crear tabla `volunteer_availability` (id, volunteer_id, career_id, date, start_time, end_time, status [available, booked]).
 - Habilitar RLS: Los voluntarios solo pueden insertar/editar sus propios registros de disponibilidad (`auth.uid() = volunteer_id`) garantizando acceso restringido.
 
 **Issue 2.3: Vista SQL (View) para Disponibilidad Pública**
 
+- **Rol: Backend**
 - Crear migración `0006_public_availability_view.sql`.
 - Diseñar la estructura SQL que cruza a los voluntarios con las carreras disponibles para exponer un horario general público.
 - Crear una vista segura (`SECURE VIEW`) que agrupe los rangos horarios por carrera y exponga solo los bloques con estado `available`, ocultando la identidad interna del voluntario.
@@ -233,12 +251,14 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 
 **Issue 2.4: Formulario Privado de Disponibilidad (Estado Aplanado)**
 
+- **Rol: Frontend**
 - Construir la vista protegida `/intranet/ovpges/disponibilidad` donde los voluntarios registran su disponibilidad separados por carrera.
 - Implementar un estado de React aplanado (ej. `const [carreraActiva, setCarreraActiva] = useState(null)`) para gestionar las selecciones sin mutar arreglos anidados.
 - El renderizado de los *checkboxes* de disponibilidad se ejecuta en tiempo lineal, eliminando la complejidad $O(n^2)$ del enfoque anterior.
 
 **Issue 2.5: Integración Estandarizada del Calendario**
 
+- **Rol: Frontend**
 - Utilizar una única librería (ej. `react-calendar`) en el formulario de la intranet para la selección de fechas.
 - Excluir cualquier componente manual de calendario o generación de grillas matriciales que cause código muerto.
 - Conectar el formulario para ejecutar inserciones directas a la tabla `volunteer_availability` mediante el cliente de Supabase.
@@ -247,11 +267,13 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 
 **Issue 2.6: Interfaz Pública del Módulo OVPGES**
 
+- **Rol: Frontend**
 - Crear la ruta `/ovpges` para que los usuarios externos vean la disponibilidad general agrupada.
 - Consumir la vista SQL (Issue 2.3) mediante consultas PostgREST para renderizar dinámicamente los rangos horarios disponibles por carrera.
 
 **Issue 2.7: Interacción y Selección Dinámica de Horarios**
 
+- **Rol: Frontend**
 - Implementar validaciones dinámicas en el calendario público (`react-calendar`), deshabilitando fechas (ej. `tileDisabled`) dependiendo de la carrera seleccionada por el escolar.
 - Añadir el componente `<GalleryTemplate />` o tarjetas estilizadas con Tailwind para la navegación fluida entre facultades y carreras.
 
@@ -259,6 +281,7 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 
 **Issue 2.8: Captura de Datos y Transaccionalidad**
 
+- **Rol: Backend / Frontend**
 - Desarrollar un modal animado (Framer Motion) para capturar el nombre y correo del escolar antes de confirmar el registro.
 - Crear la tabla `ovpges_registrations` en Supabase.
 - Implementar una función RPC (`0007_book_ovpges_slot.sql`) que inserte el registro del escolar y actualice el estado del horario a `booked` en una sola transacción SQL segura, evitando sobreescrituras (race conditions).
@@ -275,11 +298,13 @@ Este sprint aborda la automatización de los flujos de comunicación y reuniones
 
 **Issue 3.1: Configuración de Webhooks en Base de Datos**
 
+- **Rol: Integraciones / Backend**
 - Configurar *webhooks* nativos vinculados a la base de datos en Supabase.
 - Establecer un *trigger* para que el *webhook* se dispare exclusivamente ante eventos de tipo `INSERT` en la tabla de inscripciones del módulo OVPGES.
 
 **Issue 3.2: Edge Functions para Google Meet**
 
+- **Rol: Integraciones**
 - Programar *Edge Functions* en Supabase para recibir el *payload* del registro escolar.
 - Vincular la función con la API de Google para automatizar la generación de enlaces de Google Meet para las orientaciones al confirmar una inscripción.
 - Configurar la función para que actualice el registro en la base de datos con la URL de la reunión y dispare la notificación correspondiente.
@@ -288,6 +313,7 @@ Este sprint aborda la automatización de los flujos de comunicación y reuniones
 
 **Issue 3.3: Adaptación de Google Apps Script**
 
+- **Rol: Integraciones**
 - Rescatar y adaptar el *script* heredado en Google Apps Scripts utilizado en años anteriores para el Open Day.
 - Programar la lógica para que el envío masivo de correos de invitación a eventos se realice obligatoriamente por tandas.
 - Establecer un límite máximo en el código (1500 diarios) para respetar las cuotas del servicio y evitar bloqueos por *spam*.
@@ -295,6 +321,7 @@ Este sprint aborda la automatización de los flujos de comunicación y reuniones
 
 **Issue 3.4: Disparador Frontend de Campañas de Correo**
 
+- **Rol: Frontend**
 - Construir una interfaz administrativa oculta en la intranet para invocar la API de envíos masivos.
 - Activar el envío masivo de correos de invitación para los usuarios externos que demostraron interés en los eventos públicos.
 
@@ -302,11 +329,13 @@ Este sprint aborda la automatización de los flujos de comunicación y reuniones
 
 **Issue 3.5: Análisis de UX en Registro de Horas**
 
+- **Rol: Frontend**
 - Recopilar retroalimentación temprana de los voluntarios sobre el uso cotidiano de la intranet.
 - Evaluar las fricciones del sistema de registro de horas extracurriculares (validar si la interfaz resulta muy pesada para el uso diario) y documentar los ajustes necesarios.
 
 **Issue 3.6: Integración de Formularios Internos**
 
+- **Rol: Frontend**
 - Desarrollar un apartado o componente genérico dentro de la intranet capaz de invocar o incrustar formularios de manera dinámica.
 - Integrar estos formularios adicionales en la intranet para uso exclusivo de los voluntarios (ej. encuestas internas o propuestas de eventos).
 
@@ -320,11 +349,13 @@ Este sprint aborda las prioridades finales, aplica las mejoras sugeridas en el c
 
 **Issue 4.1: Refactorización de la UI de Registro de Horas**
 
+- **Rol: Frontend**
 - Aplicar las mejoras sugeridas por los voluntarios durante sus pruebas tempranas del sistema de registro de horas en la intranet.
 - Simplificar la interacción del formulario y la visualización de datos si el *feedback* indicó que la implementación resultó muy pesada en la práctica.
 
 **Issue 4.2: Auditoría del Ecosistema de Estilos**
 
+- **Rol: Frontend**
 - Verificar que el *bundle* de producción no incluya dependencias duplicadas o fragmentadas de la web heredada, como Bootstrap puro o Material UI.
 - Confirmar que todas las vistas públicas (eventos y programas) utilicen correctamente el renderizado en el servidor (SSR) en Next.js para asegurar la carga rápida y el SEO.
 
@@ -332,6 +363,7 @@ Este sprint aborda las prioridades finales, aplica las mejoras sugeridas en el c
 
 **Issue 4.3: Construcción de Formularios para Voluntarios**
 
+- **Rol: Frontend / Backend**
 - Abordar el último requerimiento de la lista de prioridades creando los formularios internos específicos para los voluntarios dentro de la intranet.
 - Crear las migraciones declarativas SQL para almacenar estas respuestas, aplicando políticas de seguridad (RLS) para que la información esté estrictamente ligada a la sesión y rol de cada voluntario.
 
@@ -339,21 +371,25 @@ Este sprint aborda las prioridades finales, aplica las mejoras sugeridas en el c
 
 **Issue 4.4: Pruebas E2E del Flujo OVPGES**
 
+- **Rol: DevOps**
 - Automatizar el flujo completo de un escolar seleccionando una carrera en el frontend, enviando el formulario, y verificando que el backend actualice el estado a ocupado.
 - Comprobar que la vista pública de carreras refleje la disponibilidad sin mostrar datos privados de los miembros.
 
 **Issue 4.5: Auditoría de Seguridad de Sesiones**
 
+- **Rol: DevOps / Backend**
 - Validar mediante *scripts* y pruebas manuales la gestión de identidad mediante JWT, garantizando la redirección automática al inicio cuando un voluntario intenta acceder a rutas protegidas sin credenciales válidas.
 
 ### Épica 4: Despliegue en Producción y Monitoreo (Días 12-14)
 
 **Issue 4.6: Pipelines Finales y Migración a Producción**
 
+- **Rol: DevOps**
 - Supervisar el entorno de producción para garantizar que los *pipelines* de GitHub Actions ejecuten el *linting* y bloqueen cualquier error antes del despliegue final.
 - Ejecutar la fuente de la verdad declarativa de Supabase (todas las migraciones SQL acumuladas) en el entorno de producción.
 
 **Issue 4.7: Lanzamiento y Entrega Oficial**
 
+- **Rol: DevOps**
 - Desplegar la versión final de la plataforma, asegurando que la presencia web principal esté 100% operativa.
 - Confirmar a Imagen Institucional que la página web está funcionando y lista para el público antes de la segunda semana de octubre.
