@@ -1,0 +1,91 @@
+name: Board Automation (CI Gate 6)
+
+on:
+  pull_request:
+    # 1. Escuchamos todos los tipos de eventos que nos interesan
+    types: [opened, reopened, ready_for_review, closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  move-project-card:
+    runs-on: ubuntu-22.04
+    steps:
+      # 1. CONFIGURACIÓN
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Check GitHub CLI version
+        run: gh --version # Si gh < 2.7, no funciona porque closingIssuesReferences no está disponible
+
+      - name: Authenticate GitHub CLI
+        run: echo "${{ secrets.GH_TOKEN }}" | gh auth login --with-token
+
+      # 2. LÓGICA CONDICIONAL
+      # Aquí determinamos el estado de destino basado en el evento que disparó el workflow.
+      # Usamos $GITHUB_OUTPUT para pasar el resultado al siguiente paso.
+      - name: Determine Target Status
+        id: set-status # Le damos un ID a este paso para referenciar sus 'outputs'
+        run: |
+          if [[ "${{ github.event.action }}" == "opened" || "${{ github.event.action }}" == "reopened" ]]; then
+            echo "target_status=In progress" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.action }}" == "ready_for_review" ]]; then
+            echo "target_status=In review" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.action }}" == "closed" && "${{ github.event.pull_request.merged }}" == "true" ]]; then
+            echo "target_status=Done" >> $GITHUB_OUTPUT
+          else
+            echo "target_status=" >> $GITHUB_OUTPUT # String vacío
+            echo "Evento (${{ github.event.action }}) no requiere acción. Saliendo."
+          fi
+
+      # 3. EJECUCIÓN
+      # Este paso solo se ejecuta si el paso anterior ('set-status') 
+      # definió un 'target_status' (no está vacío).
+      - name: Find and move project items
+        if: steps.set-status.outputs.target_status != ''
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PROJECT_NUMBER: 1 # número de proyecto que vamos a automatizar
+          ORG: "@me" # propietario del proyecto
+          # Inyectamos el estado de destino determinado en el paso anterior
+          STATUS_NAME: ${{ steps.set-status.outputs.target_status }} 
+        run: |
+          echo "Evento: ${{ github.event.action }}. Moviendo issue a '$STATUS_NAME'..."
+
+          echo "Buscando issue vinculado al PR #$PR_NUMBER..."
+          ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" --json closingIssuesReferences \
+              -q ".closingIssuesReferences[0].number")
+          if [ -z "$ISSUE_NUMBER" ]; then
+              echo "No issue vinculated to PR"
+              exit 0
+          fi
+          
+          echo "Buscando IDs del Proyecto, Campo, y Opción..."
+          PROJECT_ID=$(gh project list --format json \
+            -q ".projects[]|select(.number == "$PROJECT_NUMBER").id")
+          
+          # Obtenemos la información del campo "Status" y sus opciones en una sola llamada
+          FIELD_INFO_JSON=$(gh project field-list "$PROJECT_NUMBER" --owner "$ORG" \
+              --format json --jq '.fields | map(select(.name == "Status"))[0]')
+          
+          FIELD_ID=$(echo $FIELD_INFO_JSON | jq -r '.id')
+          
+          # Usamos --arg para pasar la variable de shell a jq de forma segura
+          OPTION_ID=$(echo $FIELD_INFO_JSON | jq -r --arg STATUS_NAME "$STATUS_NAME" \
+              '.options | map(select(.name == $STATUS_NAME).id)[0]')
+
+          echo "Buscando ID del elemento del issue en el proyecto..."
+          ITEM_ID=$(gh project item-list "$PROJECT_NUMBER" --owner "$ORG" \
+              --format json --jq ".items | map(select(.content.number == "$ISSUE_NUMBER").id)[0]")
+
+          if [ -z "$ITEM_ID" ]; then
+              echo "Error: No se pudo encontrar el Item ID para el Issue #$ISSUE_NUMBER en el proyecto."
+              exit 1
+          fi
+          
+          echo "Actualizando estado del elemento #$ITEM_ID a '$STATUS_NAME' (Option ID: $OPTION_ID)..."
+          gh project item-edit --project-id "$PROJECT_ID" --id "$ITEM_ID" \
+              --field-id "$FIELD_ID" --single-select-option-id "$OPTION_ID"
