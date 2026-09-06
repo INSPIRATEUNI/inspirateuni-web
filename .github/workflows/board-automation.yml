@@ -18,12 +18,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Check GitHub CLI version
-        run: gh --version # Si gh < 2.7, no funciona porque closingIssuesReferences no está disponible
-
-      - name: Authenticate GitHub CLI
-        run: echo "${{ secrets.GH_TOKEN }}" | gh auth login --with-token
-
       # 2. LÓGICA CONDICIONAL
       # Aquí determinamos el estado de destino basado en el evento que disparó el workflow.
       # Usamos $GITHUB_OUTPUT para pasar el resultado al siguiente paso.
@@ -47,6 +41,7 @@ jobs:
       - name: Find and move project items
         if: steps.set-status.outputs.target_status != ''
         env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }} # La CLI se autentica automáticamente con esto
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PROJECT_NUMBER: 1 # número de proyecto que vamos a automatizar
           ORG: "@me" # propietario del proyecto
