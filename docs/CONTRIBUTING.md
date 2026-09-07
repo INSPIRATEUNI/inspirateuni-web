@@ -1,4 +1,4 @@
-# Guía de Contribución - Inspírate UNI
+# Guía de Contribución -  Web Inspírate UNI 2.0
 
 ¡Bienvenido al equipo! Este documento detalla el flujo de trabajo estricto que seguimos para mantener el repositorio de Inspírate UNI limpio, trazable y completamente automatizado. Operamos bajo un modelo centralizado; todos los desarrolladores colaboran directamente sobre este repositorio sin necesidad de crear *forks* personales.
 

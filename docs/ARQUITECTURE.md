@@ -1,10 +1,10 @@
-# Arquitectura y Decisiones Técnicas - Inspírate UNI
+# Arquitectura y Decisiones Técnicas -  Web Inspírate UNI 2.0
 
 Este documento centraliza el diseño técnico de la plataforma y las razones detrás de nuestras decisiones estructurales. Nuestro objetivo es mantener un sistema de bajo costo, alta disponibilidad y fácil mantenimiento para la agrupación.
 
 ## 1. Visión General del Sistema
 
-La plataforma consolida la presencia web pública, la gestión interna de voluntarios (Intranet) y el motor de Orientaciones Vocacionales (OVPGES).
+La plataforma consolida la presencia web pública para mostrar actividades y eventos, la gestión interna de voluntarios (Intranet) y el motor de Orientaciones Vocacionales (OVPGES).
 
 ![Diagrama de Arquitectura General](./visuals/latex/arquitectura_software/arqui.svg)
 
@@ -12,7 +12,7 @@ La plataforma consolida la presencia web pública, la gestión interna de volunt
 
 ### El enfoque Backend-as-a-Service (BaaS)
 
-Inicialmente evaluamos una arquitectura tradicional de tres capas (Next.js + NestJS + PostgreSQL). Sin embargo, mantener un servidor intermedio (NestJS) en capas gratuitas (como Render) introducía latencias inaceptables (*cold starts* de hasta un minuto tras inactividad).
+Inicialmente evaluamos una arquitectura tradicional de tres capas (Next.js + NestJS + PostgreSQL) del [proyecto antecesor](https://github.com/miguelvega/InspirateWebsite). Sin embargo, mantener un servidor intermedio (NestJS) en capas gratuitas (como Render) introducía latencias inaceptables (*cold starts* de hasta un minuto tras inactividad).
 
 Para garantizar una experiencia de usuario fluida, sin incurrir en costos de infraestructura para la agrupación, adoptamos una arquitectura de dos capas:
 
