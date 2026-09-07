@@ -1,0 +1,166 @@
+\documentclass[border=15pt, tikz]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{positioning, fit, shapes.geometric, arrows.meta, calc, backgrounds}
+
+\begin{document}
+
+% ==============================================================================
+% SUBRUTINAS Y ESTILOS REUTILIZABLES (DRY - Don't Repeat Yourself)
+% ==============================================================================
+% Se utilizan estilos de TikZ (\tikzset) y macros (\newcommand) como subrutinas
+% para mantener consistencia visual y evitar la repetición de código al definir
+% la apariencia de los nodos y las conexiones.
+\pagecolor{white}
+\tikzset{
+    % Subrutina: Estilo base común para todos los nodos
+    base node/.style={
+        draw, rounded corners, align=center, font=\sffamily\small,
+        minimum width=3.8cm, minimum height=1.3cm, thick
+    },
+    % Subrutina: Actores (Usuarios)
+    actor/.style={
+        base node, fill=blue!5, draw=blue!70!black, 
+        shape=ellipse, minimum width=2.8cm
+    },
+    % Subrutina: Componentes Frontend (Next.js)
+    frontend/.style={
+        base node, fill=teal!5, draw=teal!80!black
+    },
+    % Subrutina: Componentes Backend (Supabase)
+    backend/.style={
+        base node, fill=green!5, draw=green!70!black
+    },
+    % Subrutina: Base de Datos
+    database/.style={
+        base node, shape=cylinder, shape border rotate=90, aspect=0.25,
+        fill=yellow!10, draw=yellow!70!black, minimum height=2cm
+    },
+    % Subrutina: Integraciones / APIs Externas
+    external/.style={
+        base node, fill=purple!5, draw=purple!80!black
+    },
+    % Subrutina: Componentes de DevOps
+    devops/.style={
+        base node, fill=gray!10, draw=gray!80!black, dashed
+    },
+    % Subrutina: Cajas de agrupación (Contexto)
+    group box/.style={
+        draw=gray!40, dashed, rounded corners, inner sep=18pt, fill=gray!2, thick
+    },
+    % Subrutina: Estilos de flechas
+    arrow/.style={
+        ->, >=Stealth, thick, draw=gray!80!black
+    },
+    bidir/.style={
+        <->, >=Stealth, thick, draw=gray!80!black
+    },
+    % Subrutina: Etiquetas sobre las conexiones
+    conn label/.style={
+        font=\sffamily\scriptsize\bfseries, text=gray!80!black,
+        fill=white, inner sep=2pt, rounded corners=2pt
+    }
+}
+
+% Macros (subrutinas directas) para dibujar conexiones rápidamente y evitar código muerto
+\newcommand{\connect}[4][above]{%
+  \draw[arrow] (#2) -- node[conn label, #1] {#4} (#3);
+}
+
+% Definición del comando:
+% #1 = Posición (Opcional, por defecto 'above')
+% #2 = Nodo inicial
+% #3 = Nodo final
+% #4 = Texto de la etiqueta
+\newcommand{\connectbidir}[4][above]{%
+  \draw[bidir] (#2) -- node[conn label, #1] {#4} (#3);
+}
+
+\begin{tikzpicture}[node distance=1.8cm and 3cm, rounded corners=8pt]
+
+% ------------------------------------------------------------------------------
+% 1. ACTORES (Posicionamiento Relativo - Izquierda)
+% ------------------------------------------------------------------------------
+\node[actor] (escolar) {Escolares\\(Público Externo)};
+\node[actor, below=4cm of escolar] (voluntario) {Voluntarios\\(Usuarios Internos)};
+
+% ------------------------------------------------------------------------------
+% 2. FRONTEND - NEXT.JS (Posicionamiento Relativo al Actor)
+% ------------------------------------------------------------------------------
+\node[frontend, right=2.5cm of escolar] (public_web) {Vistas Públicas / SSR\\(Landing, OVPGES, Eventos)};
+\node[frontend, right=2.5cm of voluntario] (intranet) {Intranet Privada (SPA)\\(Registro Horas, Disp. OVPGES)};
+
+\begin{scope}[on background layer]
+    \node[group box, fit=(public_web) (intranet)] (front_group) {};
+    \node[above=0.2cm of front_group.north, font=\sffamily\bfseries] {Frontend (Next.js + Tailwind + shadcn/ui)};
+\end{scope}
+
+% ------------------------------------------------------------------------------
+% 3. BACKEND - SUPABASE (Posicionamiento Relativo al Frontend)
+% ------------------------------------------------------------------------------
+\node[backend, right=3cm of public_web] (api) {PostgREST API\\(Auto-generada)};
+\node[backend, right=3cm of intranet] (auth) {Autenticación\\(JWT SSR)};
+
+% Posicionamiento intermedio dinámico (Cálculo relativo)
+\node[database] (db) at ($(api)!0.5!(auth) + (4.5cm,0)$) {PostgreSQL DB\\(Migraciones, RLS, Vistas)};
+\node[backend, above=1.5cm of db] (edge) {Webhooks \&\\Edge Functions};
+
+\begin{scope}[on background layer]
+    \node[group box, fit=(api) (auth) (db) (edge)] (back_group) {};
+    \node[above=0.2cm of back_group.north, font=\sffamily\bfseries] {Backend (Ecosistema Supabase)};
+\end{scope}
+
+% ------------------------------------------------------------------------------
+% 4. INTEGRACIONES EXTERNAS (Posicionamiento Relativo al Backend)
+% ------------------------------------------------------------------------------
+\node[external, right=2.5cm of edge] (gmeet) {Google Meet API\\(Generación de Enlaces)};
+\node[external] (apps_script) at ($(db|-intranet) + (4cm, 0)$) {Google Apps Script\\(Envío de Correos por Tandas)};
+
+\begin{scope}[on background layer]
+    \node[group box, fit=(gmeet) (apps_script)] (ext_group) {};
+    \node[above=0.2cm of ext_group.north, font=\sffamily\bfseries] {Integraciones Externas};
+\end{scope}
+
+% ------------------------------------------------------------------------------
+% 5. DEVOPS / CI-CD (Posicionamiento Relativo Global - Arriba)
+% ------------------------------------------------------------------------------
+\node[devops, above=2.5cm of front_group] (github) {GitHub Actions\\(CI/CD, Linter, Pruebas pre-commit)};
+\node[devops, above=2.5cm of back_group] (migrations) {Migraciones Declarativas\\(Infraestructura como Código / pgTAP)};
+
+\begin{scope}[on background layer]
+    \node[group box, fit=(github) (migrations)] (devops_group) {};
+    \node[above=0.2cm of devops_group.north, font=\sffamily\bfseries] {Control de Calidad, Testing y Despliegue Automatizado};
+\end{scope}
+
+% ------------------------------------------------------------------------------
+% 6. CONEXIONES (Invocación de Subrutinas y Enrutamientos Relativos)
+% ------------------------------------------------------------------------------
+
+% Actores -> Frontend
+\connect{escolar}{public_web}{Navegación / Reserva OVPGES}
+\connect{voluntario}{intranet}{Gestión Privada}
+
+% Frontend -> Backend (Directas)
+\connectbidir{public_web}{api}{Consultas (Solo Lectura)}
+\connectbidir[below]{intranet}{auth}{Sesiones de Usuario}
+
+% Frontend -> Backend (Con ángulos manuales aprovechando estilos)
+\draw[arrow] (intranet.east) -- ++(1cm,0) |- node[conn label, near start] {Mutaciones de Horas (Reglas RLS)} (api.west);
+
+% Backend interno
+\connectbidir{api}{db}{Consultas SQL Automáticas}
+\draw[arrow] (auth.east) -- node[conn label, sloped, above] {Triggers (Crea Perfil)} (db.south west);
+\connect[below]{db}{edge}{Webhook (Trigger: INSERT en OVPGES)}
+
+% Backend -> Externo
+\connect{edge}{gmeet}{Genera URL de Reunión}
+
+% Frontend -> Externo
+\draw[arrow] (intranet.south) -- ++(0,-1cm) -| node[conn label, near start] {Llamada API (Payload de Suscriptores)} (apps_script.south);
+
+% DevOps -> Componentes
+\draw[->, >=Stealth, dashed, thick, draw=blue!70!black] (github.south) -- node[conn label, right] {Validación y Despliegue} (front_group.north);
+\draw[->, >=Stealth, dashed, thick, draw=blue!70!black] (github.east) -- node[conn label, above, sloped] {Pipeline exige éxito en Tests} (migrations.west);
+\draw[->, >=Stealth, dashed, thick, draw=blue!70!black] (migrations.south) -- node[conn label, right] {Aplica Esquema de BD (Cero UI)} (back_group.north);
+
+\end{tikzpicture}
+\end{document}

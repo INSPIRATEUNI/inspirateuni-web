@@ -1,0 +1,17 @@
+# Variables de entorno
+.env
+.env.local
+
+
+
+# Compilación LaTeX
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.out
+*.pdf
+*.snm
+*.synctex.gz
+*.toc

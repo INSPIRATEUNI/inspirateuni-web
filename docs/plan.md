@@ -58,7 +58,7 @@
 
 # Plan de Desarrollo - Web Inspírate UNI 2.0 (Next.js + Supabase)
 
-![Diagrama de Arquitectura](./images/arqui.svg)
+![Diagrama de Arquitectura](./visuals/latex/arquitectura_desarrollo/arqui_dev.svg)
 
 ## Panorama General de Sprints (Septiembre - Octubre 2026)
 
@@ -216,7 +216,7 @@ Construcción del sistema cerrado para voluntarios y conexión con la base de da
 - Mostrar los datos en una tabla estilizada con Tailwind, indicando el estado (Pendiente/Aprobado) con colores (Badges).
 - Añadir cálculo automático del total de horas aprobadas acumuladas en la interfaz.
 
-![Secuencia de registro de horas](./images/registro.svg)
+![Secuencia de registro de horas](./visuals/latex/caso_uso_secuencia_registrar_horas/registro.svg)
 
 ## Sprint 2: Desarrollo del Módulo OVPGES (Hiperdetallado)
 
@@ -286,7 +286,7 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 - Crear la tabla `ovpges_registrations` en Supabase.
 - Implementar una función RPC (`0007_book_ovpges_slot.sql`) que inserte el registro del escolar y actualice el estado del horario a `booked` en una sola transacción SQL segura, evitando sobreescrituras (race conditions).
 
-![Secuencia de reserva para OVPGES](./images/reserva.svg)
+![Secuencia de reserva para OVPGES](./visuals/latex/caso_uso_secuencia_reservar_ovpges/reserva.svg)
 
 ## Sprint 3: Automatización, Integraciones y Webhooks (Semanas 5-6)
 

@@ -12,8 +12,8 @@ Vamos a implementar juntos los cimientos de la página web definitiva de Inspír
 
 ### 3. Navegación de la Documentación
 
-* 📜 **¿Quieres entender la arquitectura y sprints?** Revisa nuestro [`plan.md`](https://github.com/INSPIRATEUNI/inspirateuni-web/blob/main/docs/plan.md).
-* 🤝 **¿Quieres contribuir?** Lee por favor [`contributing.md`](https://github.com/INSPIRATEUNI/inspirateuni-web/blob/main/contributing.md) antes de empezar.
+* 📜 **¿Quieres entender la arquitectura y sprints?** Revisa nuestro [plan detallado](./docs/plan.md), así como las [decisiones críticas](./docs/adr.md)
+* 🤝 **¿Quieres contribuir?** Lee por favor la guía [`cómo contribuir`](./CONTRIBUTING.md) paso a paso antes de empezar, así como nuestro [código de conducta](./CODE_OF_CONDUCT.md) para tener un ambiente positivo de desarrollo.
 
 ### 4. Prerrequisitos
 

@@ -7,44 +7,47 @@
 Una vez que hayas aceptado la invitación como colaborador del repositorio, el primer paso es alistar tu entorno local para que cumpla con las reglas automatizadas del proyecto.
 
 1. **Clona el repositorio:**
-```bash
-git clone https://github.com/INSPIRATEUNI/inspirateuni-web.git
-cd inspirateuni-web
-```
 
+    ```bash
+    git clone https://github.com/INSPIRATEUNI/inspirateuni-web.git
+    cd inspirateuni-web
+    ```
 
 2. **Inicializa las herramientas locales:**
 Ejecuta el siguiente comando en la raíz del proyecto:
-```bash
-make init
-```
 
+    ```bash
+    make init
+    ```
 
 > **Nota:** Este paso reconfigura la ruta de los *githooks* de tu máquina para apuntar a la carpeta `.githooks/` del proyecto. Esto activa los *scripts* `commit-msg` y `pre-commit` para ayudar al desarrollador a apegarse al conventional commits y a nuestras reglas de ramificación.
 
 ## 2. Creación de Ramas (GitHub Flow)
 
+
 Nuestra fuente de verdad es la rama `main`. Nadie puede hacer *push* directo a esta línea. Todo desarrollo debe aislarse en ramas de corta vida.
+
+![Estrategia de ramificación GitHub Flow](./visuals/latex/estrategia_ramificación/ramas.svg)
+
 
 * Crea tu rama siempre a partir de la versión más actualizada de `main`.
 * Usa los prefijos **`feature/`** para características nuevas y **`bugfix/`** para solucionar errores.
-```bash
-git checkout -b feature/nombre-descriptivo
-```
 
-
+    ```bash
+    git checkout -b feature/nombre-descriptivo
+    ```
 
 ## 3. Mensajes de Commit (Conventional Commits)
 
 El proyecto impone la especificación de *Conventional Commits*. Si el formato es incorrecto, el *githook* abortará tu *commit* localmente.
 
-* **Estructura base:** `tipo(alcance): descripción breve`
+* **Estructura base:** `tipo(alcance): describir brevemente`
 * **Ejemplos aceptados:**
 * `feat(auth): agregar validación al formulario de login`
 * `fix(ovpges): corregir solapamiento en el calendario`
-* `docs(readme): actualizar pasos de despliegue`
+* `docs: actualizar el plan detallado y las decisiones arquitectónicas`
 
-
+> **Nota:** Se recomienda usar siempre como primera palabra de la descripción breve del commit un verbo infinitivo (ej. añadir, corregir, actualizar, implementar, etc.).
 
 ## 4. Pull Requests y Revisión por Pares
 
