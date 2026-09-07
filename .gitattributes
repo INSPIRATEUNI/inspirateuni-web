@@ -1,0 +1,6 @@
+# Forzar que todos los archivos de texto usen LF al normalizarse en Git
+* text=auto eol=lf
+
+# Archivos binarios (no se modifican sus saltos de línea)
+*.png binary
+*.jpg binary
