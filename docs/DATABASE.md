@@ -66,6 +66,37 @@ Diseño lógico de la base de datos (borrador). Aún no está implementado en `b
 
 Fuente editable: `visuals/latex/modelo_datos/bd.tex`. Para regenerar el SVG (desde esa carpeta): `pdflatex bd.tex` y luego `dvisvgm --pdf bd.pdf -o bd.svg`.
 
+### Cardinalidades
+
+Cada relación se lee de la tabla con la FK (N) hacia la tabla referenciada. `0..1` indica FK opcional (nula).
+
+| Relación | Cardinalidad | Lectura |
+|---|---|---|
+| `areas` → `programs` | N : 1 | Un programa tiene varias áreas; cada área es de un programa |
+| `position_assignments` → `profiles` | N : 1 | Una persona puede tener varias asignaciones (una por período) |
+| `position_assignments` → `organizational_roles` | N : 1 | Un cargo se asigna a varias personas |
+| `position_assignments` → `management_periods` | N : 1 | Un período agrupa muchas asignaciones |
+| `position_assignments` → `areas` | N : 0..1 | Nula para presidente y vice (`is_global`) |
+| `volunteer_calls` → `management_periods` | N : 1 | Un período puede tener varias convocatorias |
+| `applications` → `volunteer_calls` | N : 1 | Una convocatoria recibe muchas postulaciones |
+| `applications` → `areas` | N : 1 | Cada postulación es a un área |
+| `applications` → `profiles` | N : 1 | Un postulante puede tener varias postulaciones |
+| `tasks` → `areas` | N : 1 | Un área tiene muchas tareas |
+| `tasks` → `activity_types` | N : 1 | Un tipo de actividad (con su peso) se usa en muchas tareas |
+| `task_assignments` → `tasks` | N : 1 | Una tarea se asigna a varios voluntarios |
+| `task_assignments` → `position_assignments` | N : 1 | Un voluntario recibe varias tareas |
+| `task_submissions` → `task_assignments` | N : 1 | Una asignación puede tener varias entregas (p. ej. tras un rechazo) |
+| `submission_evidences` → `task_submissions` | N : 1 | Una entrega tiene varias evidencias |
+| `availability_slots` → `position_assignments` | N : 1 | Un voluntario publica varios bloques |
+| `ovpg_bookings` → `availability_slots` | N : 1 | Un bloque admite hasta `capacity` reservas |
+| `ovpg_bookings` → `participants` | N : 1 | Un participante reserva varias veces, pero una por semana |
+| `participants` → `schools` | N : 0..1 | Los externos individuales pueden no tener colegio |
+| `guardian_consents` → `participants` | N : 1 | Un menor puede tener varias autorizaciones (vencidas y vigente) |
+| `event_registrations` → `events` | N : 1 | Un evento tiene varias inscripciones |
+| `event_registrations` → `schools` | N : 0..1 | Nula en inscripciones individuales |
+| `event_attendees` → `event_registrations` | N : 1 | Una inscripción de colegio lista a varios alumnos |
+| `event_attendees` → `participants` | N : 1 | Un participante asiste a varios eventos, una vez por evento |
+
 ## 2. Módulos
 
 | Módulo | Tablas | Propósito |

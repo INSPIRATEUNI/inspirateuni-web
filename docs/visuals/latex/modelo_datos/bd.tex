@@ -34,12 +34,14 @@
         font=\scriptsize
     },
     fkline/.style={-{Latex[length=2.2mm]}, thick, draw=black!70},
+    card/.style={fill=white, inner sep=1pt, font=\scriptsize\bfseries, text=black!80},
     mod/.style={rounded corners=2pt, thick, minimum width=4mm, minimum height=4mm}
 }
 
 \newcommand{\entity}[6]{%
     \node[ent=#4] (#1) at (#2,#3) {{\centering\bfseries\small #5\par}\nodepart{second}#6};%
 }
+\newcommand{\rel}[4]{\draw[fkline] #1 -- #2 node[card, pos=0.14] {#3} node[card, pos=0.86] {#4};}
 \newcommand{\pk}[1]{\textbf{PK}\ #1}
 \newcommand{\fk}[1]{\textit{FK}\ #1}
 \newcommand{\uq}[1]{\textit{UQ}\ #1}
@@ -117,39 +119,43 @@
     % Relaciones (FK -> PK)
     % ==========================================
     % Nucleo
-    \draw[fkline] (areas) -- (programs);
-    \draw[fkline] (pa) -- (areas);
-    \draw[fkline] (pa) -- (periods);
-    \draw[fkline] (pa) -- (profiles);
-    \draw[fkline] (pa.north east) -- (roles.south west);
+    \rel{(areas)}{(programs)}{N}{1}
+    \rel{(pa)}{(areas)}{N}{0..1}
+    \rel{(pa)}{(periods)}{N}{1}
+    \rel{(pa)}{(profiles)}{N}{1}
+    \rel{(pa.north east)}{(roles.south west)}{N}{1}
 
     % Convocatorias
     \draw[fkline] (calls.north) -- ++(0,0.9) -| (periods.north);
-    \draw[fkline] (apps) -- (calls);
-    \draw[fkline] (apps) -- (areas);
+    \node[card] at ($(calls.north)+(0.3,0.45)$) {N};
+    \node[card] at ($(periods.north)+(0,0.45)$) {1};
+    \rel{(apps)}{(calls)}{N}{1}
+    \rel{(apps)}{(areas)}{N}{1}
 
     % Tareas y horas
-    \draw[fkline] (tasks) -- (areas);
-    \draw[fkline] (tasks) -- (atypes);
-    \draw[fkline] (ta) -- (tasks);
-    \draw[fkline] (ta) -- (pa);
-    \draw[fkline] (subs) -- (ta);
-    \draw[fkline] (evid) -- (subs);
+    \rel{(tasks)}{(areas)}{N}{1}
+    \rel{(tasks)}{(atypes)}{N}{1}
+    \rel{(ta)}{(tasks)}{N}{1}
+    \rel{(ta)}{(pa)}{N}{1}
+    \rel{(subs)}{(ta)}{N}{1}
+    \rel{(evid)}{(subs)}{N}{1}
 
     % OVPGES
-    \draw[fkline] (slots.north west) -- (pa.south east);
-    \draw[fkline] (book) -- (slots);
-    \draw[fkline] (book) -- (part);
+    \rel{(slots.north west)}{(pa.south east)}{N}{1}
+    \rel{(book)}{(slots)}{N}{1}
+    \rel{(book)}{(part)}{N}{1}
 
     % Participantes
-    \draw[fkline] (guard) -- (part);
-    \draw[fkline] (part.south east) -- (schools.north west);
+    \rel{(guard)}{(part)}{N}{1}
+    \rel{(part.south east)}{(schools.north west)}{N}{0..1}
 
     % Open Day
-    \draw[fkline] (reg) -- (events);
-    \draw[fkline] (att) -- (reg);
-    \draw[fkline] (att) -- (part);
+    \rel{(reg)}{(events)}{N}{1}
+    \rel{(att)}{(reg)}{N}{1}
+    \rel{(att)}{(part)}{N}{1}
     \draw[fkline] (reg.south) -- ++(0,-1.8) -| (schools.south);
+    \node[card] at ($(reg.south)+(0.3,-0.6)$) {N};
+    \node[card] at ($(schools.south)+(0,-0.6)$) {0..1};
 
     % ==========================================
     % Leyenda
@@ -168,7 +174,7 @@
     \node[mod, fill=boxyellow, draw=borderyellow, anchor=west] (l6) at ($(l5.west)+(0,-0.6)$) {};
     \node[font=\scriptsize, anchor=west] at (l6.east) {\ Convocatorias};
     \node[font=\scriptsize, anchor=west, align=left] at ($(l6.west)+(0,-0.9)$)
-        {Flecha: clave foranea $\rightarrow$ tabla referenciada\\ \textbf{PK} primaria, \textit{FK} foranea, \textit{UQ} unica};
+        {Flecha: clave foranea $\rightarrow$ tabla referenciada\\ Cardinalidad: N (hijo) a 1 o 0..1 (referenciada)\\ \textbf{PK} primaria, \textit{FK} foranea, \textit{UQ} unica};
 
 \end{tikzpicture}
 \end{document}
