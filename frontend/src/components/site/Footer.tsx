@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { relayAt } from "@/lib/relay";
+import { PinIcon } from "./Icons";
 import { Mascot } from "./Mascot";
 import { contact, footerColumns, socialLinks } from "./navigation";
 
@@ -58,6 +59,15 @@ export function Footer() {
                 </li>
               ))}
             </ul>
+            <a
+              href={contact.mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(linkClasses, "mt-5 inline-flex items-center gap-2")}
+            >
+              <PinIcon className="size-5 shrink-0 text-magenta-deep" />
+              {contact.address}
+            </a>
           </div>
 
           {footerColumns.map((column) => (
@@ -85,20 +95,12 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href={`tel:${contact.phone.replaceAll(" ", "")}`}
-                  className={linkClasses}
-                >
-                  {contact.phone}
-                </a>
-              </li>
-              <li>
-                <a
-                  href={contact.mapUrl}
+                  href={contact.whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={linkClasses}
                 >
-                  {contact.address}
+                  {contact.phone}
                 </a>
               </li>
             </ul>

@@ -13,7 +13,7 @@ export const mainNav: NavItem[] = [
 
 export const visitCta: NavItem = { label: "Pide una visita", href: "/ovpgs" };
 
-export const loginLink: NavItem = { label: "Ingresar", href: "/Login" };
+export const loginLink: NavItem = { label: "Ingresar", href: "/login" };
 
 export const footerColumns: { title: string; links: NavItem[] }[] = [
   {
@@ -29,7 +29,7 @@ export const footerColumns: { title: string; links: NavItem[] }[] = [
     links: [
       { label: "Eventos", href: "/eventos" },
       { label: "Voluntariado", href: "/voluntariado" },
-      { label: "Ingresar", href: "/Login" },
+      { label: "Ingresar", href: "/login" },
     ],
   },
 ];
@@ -43,6 +43,7 @@ export const socialLinks = [
 export const contact = {
   email: "inspirateuni@uni.edu.pe",
   phone: "+51 935 903 055",
+  whatsappUrl: "https://wa.me/51935903055",
   address: "Casita Inspírate",
   mapUrl: "https://maps.app.goo.gl/GSHoLbbBpBEKsY3c7",
 };
