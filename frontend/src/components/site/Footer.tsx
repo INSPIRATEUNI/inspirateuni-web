@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { relayAt } from "@/lib/relay";
+import { Mascot } from "./Mascot";
 import { contact, footerColumns, socialLinks } from "./navigation";
 
 const socialClasses = {
@@ -82,12 +83,32 @@ export function Footer() {
                   {contact.email}
                 </a>
               </li>
-              <li className="text-foreground/78">{contact.address}</li>
+              <li>
+                <a
+                  href={`tel:${contact.phone.replaceAll(" ", "")}`}
+                  className={linkClasses}
+                >
+                  {contact.phone}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={contact.mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={linkClasses}
+                >
+                  {contact.address}
+                </a>
+              </li>
             </ul>
           </div>
         </div>
 
-        <div aria-hidden="true" className="spectrum-rule mt-14" />
+        <div className="mt-14 flex items-end justify-between gap-6">
+          <div aria-hidden="true" className="spectrum-rule" />
+          <Mascot pose="durmiendo" className="-mb-1 w-36 sm:w-44" />
+        </div>
         <div className="mt-4 flex flex-wrap justify-between gap-x-8 gap-y-3 border-t border-border pt-6 text-sm text-muted-foreground">
           <p>
             © {year} Inspírate UNI. Hecho por estudiantes de la UNI, para ti.

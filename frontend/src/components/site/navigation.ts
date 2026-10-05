@@ -35,13 +35,14 @@ export const footerColumns: { title: string; links: NavItem[] }[] = [
 ];
 
 export const socialLinks = [
-  { label: "Instagram", href: "https://www.instagram.com/" },
-  { label: "TikTok", href: "https://www.tiktok.com/" },
-  { label: "Facebook", href: "https://www.facebook.com/" },
-  { label: "LinkedIn", href: "https://www.linkedin.com/" },
+  { label: "Instagram", href: "https://www.instagram.com/inspirateuni/" },
+  { label: "TikTok", href: "https://www.tiktok.com/@inspirateuni" },
+  { label: "Facebook", href: "https://www.facebook.com/inspirateuni" },
 ];
 
 export const contact = {
-  email: "hola@inspirateuni.org",
-  address: "Av. Túpac Amaru 210, Rímac, Lima",
+  email: "inspirateuni@uni.edu.pe",
+  phone: "+51 935 903 055",
+  address: "Casita Inspírate",
+  mapUrl: "https://maps.app.goo.gl/GSHoLbbBpBEKsY3c7",
 };
