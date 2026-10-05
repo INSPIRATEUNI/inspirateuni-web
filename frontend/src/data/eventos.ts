@@ -12,7 +12,10 @@ export const eventos: GalleryItem[] = [
     date: "2026-11-14T09:00:00-05:00",
     location: "Campus UNI, Rímac",
     category: { label: "Presencial", tone: "orange" },
-    image: { alt: "Estudiantes recorriendo el campus durante el Open Day" },
+    image: {
+      src: "/fotos/prueba/evento-open-day-2026.jpg",
+      alt: "Estudiantes recorriendo el campus durante el Open Day",
+    },
     cta: { label: "Quiero ir", href: "/OpenDay" },
   },
   {
@@ -23,7 +26,10 @@ export const eventos: GalleryItem[] = [
     date: "2026-10-22T18:00:00-05:00",
     location: "En línea",
     category: { label: "Charlas", tone: "blue" },
-    image: { alt: "Estudiante dando una charla frente a escolares" },
+    image: {
+      src: "/fotos/prueba/evento-charla-elegir-carrera.jpg",
+      alt: "Estudiante dando una charla frente a escolares",
+    },
   },
   {
     id: "mujeres-en-ciencia",
@@ -33,7 +39,10 @@ export const eventos: GalleryItem[] = [
     date: "2026-10-30T16:00:00-05:00",
     location: "Auditorio de la Facultad de Ciencias",
     category: { label: "Inspírate Girl", tone: "magenta" },
-    image: { alt: "Panel de ingenieras conversando con escolares" },
+    image: {
+      src: "/fotos/prueba/evento-mujeres-en-ciencia.jpg",
+      alt: "Panel de ingenieras conversando con escolares",
+    },
     cta: { label: "Conoce Inspírate Girl", href: "/Igirl" },
   },
   {
@@ -44,7 +53,10 @@ export const eventos: GalleryItem[] = [
     date: "2026-11-07T10:00:00-05:00",
     location: "Laboratorio de Mecatrónica",
     category: { label: "Programa", tone: "green" },
-    image: { alt: "Escolares armando un robot en el laboratorio" },
+    image: {
+      src: "/fotos/prueba/evento-taller-robotica.jpg",
+      alt: "Escolares armando un robot en el laboratorio",
+    },
   },
 ];
 
