@@ -4,16 +4,20 @@ import { cn } from "@/lib/cn";
 import type { GalleryImage } from "@/lib/gallery";
 import { type RelayColor, relayClasses } from "@/lib/relay";
 
-type ImageSlotShape = "leaf" | "wide";
+type ImageSlotShape = "leaf" | "wide" | "landscape" | "portrait";
 
 const shapeClasses: Record<ImageSlotShape, string> = {
   leaf: "size-20 rounded-leaf-sm sm:size-24",
   wide: "aspect-[16/9] w-full rounded-leaf",
+  landscape: "aspect-[5/4] w-full rounded-leaf",
+  portrait: "aspect-[4/5] w-full rounded-leaf",
 };
 
 const sizes: Record<ImageSlotShape, string> = {
   leaf: "96px",
   wide: "(max-width: 640px) 100vw, 576px",
+  landscape: "(max-width: 1024px) 100vw, 640px",
+  portrait: "(max-width: 768px) 50vw, 280px",
 };
 
 const stripeClasses: Record<RelayColor, string> = {
@@ -77,8 +81,8 @@ export function ImageSlot({
         className={cn("absolute inset-0 opacity-15", stripeClasses[tone])}
       />
       <div className="relative flex h-full flex-col items-center justify-center gap-1 p-2 text-center">
-        <CameraIcon className={shape === "wide" ? "size-8" : "size-6"} />
-        {shape === "wide" && (
+        <CameraIcon className={shape === "leaf" ? "size-6" : "size-8"} />
+        {shape !== "leaf" && (
           <span className="text-sm font-bold">Foto: {alt}</span>
         )}
       </div>
