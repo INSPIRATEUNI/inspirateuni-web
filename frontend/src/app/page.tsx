@@ -1,3 +1,5 @@
+import { GalleryTemplate } from "@/components/gallery/GalleryTemplate";
+import { WelcomeCarousel } from "@/components/home/WelcomeCarousel";
 import { SparkleIcon } from "@/components/site/Icons";
 import { Mascot } from "@/components/site/Mascot";
 import { Button } from "@/components/ui/Button";
@@ -5,8 +7,83 @@ import { GradientText } from "@/components/ui/GradientText";
 import { Heading } from "@/components/ui/Heading";
 import { Tag } from "@/components/ui/Tag";
 import { Text } from "@/components/ui/Text";
+import { eventos, programas } from "@/data/eventos";
+import { slides } from "@/data/inicio";
+import { upcoming } from "@/lib/gallery";
 
 export default function Home() {
+  return (
+    <>
+      <Hero />
+
+      <section className="pb-20">
+        <div className="container-site max-w-6xl">
+          <Heading variant="section">
+            Así se vive <GradientText gradient="energy">Inspírate</GradientText>
+            .
+          </Heading>
+          <WelcomeCarousel slides={slides} className="mt-8" />
+        </div>
+      </section>
+
+      <section className="bg-tint-blue py-16">
+        <div className="container-site max-w-4xl">
+          <Heading variant="section">
+            Elige por dónde{" "}
+            <GradientText gradient="discover">empezar</GradientText>.
+          </Heading>
+          <Text variant="lead" className="mt-4">
+            Cada programa te acompaña en un momento distinto de tu elección.
+          </Text>
+          <GalleryTemplate data={programas} layout="choices" className="mt-8" />
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container-site max-w-4xl">
+          <Heading variant="section">
+            Lo que <GradientText gradient="fresh">se viene</GradientText>.
+          </Heading>
+          <Text variant="lead" className="mt-4">
+            Charlas, talleres y visitas para conocer la UNI desde adentro.
+          </Text>
+          <GalleryTemplate data={upcoming(eventos, 3)} className="mt-6" />
+          <Button href="/eventos" variant="ghost" className="mt-6">
+            Ver todos los eventos
+          </Button>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-tint-magenta py-16">
+        <div
+          aria-hidden="true"
+          className="blob -bottom-24 -left-16 size-80 bg-magenta"
+        />
+        <div className="container-site z-1 flex max-w-4xl flex-col items-center gap-8 text-center sm:flex-row sm:text-left">
+          <Mascot
+            pose="risa"
+            className="w-32 shrink-0 animate-mascot-float sm:w-40 motion-reduce:animate-none"
+          />
+          <div>
+            <Heading variant="section">
+              ¿Ya estás en la <GradientText gradient="energy">UNI</GradientText>
+              ?
+            </Heading>
+            <Text variant="lead" className="mt-4">
+              Súmate al voluntariado y ayuda a otros escolares a encontrar su
+              camino, como alguien hizo contigo.
+            </Text>
+            <Button href="/voluntariado" bolt className="mt-6">
+              Quiero ser voluntario
+            </Button>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function Hero() {
   return (
     <section className="relative overflow-hidden pt-14 pb-24">
       <div

@@ -4,10 +4,6 @@ import type { RelayColor } from "@/lib/relay";
 
 export type GalleryImage = { src?: string; alt: string };
 
-/**
- * Icono de las filas de elección. Es un nombre y no un componente para
- * que los datos puedan pasar del servidor al cliente.
- */
 export type GalleryIcon = "campus" | "girl" | "pin" | "heart";
 
 /**
@@ -27,6 +23,14 @@ export type GalleryItem = {
 };
 
 export type GalleryLayout = "list" | "choices";
+
+/** Los X elementos con fecha más cercana, del más próximo al más lejano. */
+export function upcoming(items: GalleryItem[], n: number) {
+  return items
+    .filter((item) => item.date)
+    .toSorted((a, b) => Date.parse(a.date ?? "") - Date.parse(b.date ?? ""))
+    .slice(0, n);
+}
 
 const TIME_ZONE = "America/Lima";
 
