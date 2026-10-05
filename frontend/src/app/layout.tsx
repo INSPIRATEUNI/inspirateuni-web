@@ -19,10 +19,7 @@ const quicksand = Quicksand({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Inspírate UNI",
-    template: "%s | Inspírate UNI",
-  },
+  title: "Inspírate UNI",
   description:
     "Voluntariado estudiantil de la Universidad Nacional de Ingeniería. Orientación vocacional vivencial para escolares y preuniversitarios.",
 };

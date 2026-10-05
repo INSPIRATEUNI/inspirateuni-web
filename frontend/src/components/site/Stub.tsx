@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/Button";
 import { Heading } from "@/components/ui/Heading";
 import { Tag } from "@/components/ui/Tag";
 import { Text } from "@/components/ui/Text";
-import { LogoBulbIcon, SparkleIcon } from "./Icons";
+import { SparkleIcon } from "./Icons";
+import { Mascot, type MascotPose } from "./Mascot";
 
 type StubProps = {
   title: ReactNode;
   description?: ReactNode;
   tag?: string;
+  mascot?: MascotPose;
 };
 
 /** Página provisional compartida por las rutas que aún no tienen contenido. */
@@ -16,6 +18,7 @@ export function Stub({
   title,
   description = "Estamos preparando esta sección. Vuelve pronto para conocer todo lo que tenemos para ti.",
   tag = "Próximamente",
+  mascot = "pensando",
 }: StubProps) {
   return (
     <section className="relative overflow-hidden py-24">
@@ -24,7 +27,10 @@ export function Stub({
         className="blob top-10 left-1/2 size-80 -translate-x-1/2 bg-blue"
       />
       <div className="container-site z-1 flex max-w-2xl flex-col items-center text-center">
-        <LogoBulbIcon className="size-16 animate-pulse-bulb motion-reduce:animate-none" />
+        <Mascot
+          pose={mascot}
+          className="w-36 animate-mascot-float sm:w-44 motion-reduce:animate-none"
+        />
         <Tag tone="orange" className="mt-6">
           <SparkleIcon className="size-3.5" />
           {tag}
