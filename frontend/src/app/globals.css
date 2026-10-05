@@ -221,6 +221,12 @@
     color: var(--color-foreground);
   }
 
+  /* Lo animado no sirve de ancla al restaurar el scroll: su movimiento
+     desplaza la página unos píxeles en cada recarga. */
+  [class*="animate-"] {
+    overflow-anchor: none;
+  }
+
   :focus-visible {
     outline: 3px solid var(--color-ring);
     outline-offset: 3px;
@@ -489,6 +495,9 @@
   filter: blur(40px);
   opacity: 0.4;
   pointer-events: none;
+  /* Si Chrome lo toma como ancla al restaurar el scroll, el vaivén
+     desplaza la página unos píxeles en cada recarga. */
+  overflow-anchor: none;
   animation: var(--animate-blob-float);
 
   @media (prefers-reduced-motion: reduce) {

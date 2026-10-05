@@ -61,6 +61,8 @@ export function GalleryTemplate({
         {data.map((item, index) => (
           <motion.li
             key={item.id}
+            // Su entrada animada no debe servir de ancla de scroll.
+            className="[overflow-anchor:none]"
             initial={{ opacity: 0, y: 8 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
