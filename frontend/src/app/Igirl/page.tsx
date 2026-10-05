@@ -1,6 +1,7 @@
 import { ImageSlot } from "@/components/gallery/ImageSlot";
 import { Bullets } from "@/components/programs/Bullets";
 import { BoltIcon, SparkleIcon } from "@/components/site/Icons";
+import { Mascot } from "@/components/site/Mascot";
 import { contact } from "@/components/site/navigation";
 import { buttonClasses } from "@/components/ui/Button";
 import { GradientText } from "@/components/ui/GradientText";
@@ -101,7 +102,13 @@ export default function IgirlPage() {
         </div>
 
         <div className="mt-16">
-          <Text variant="eyebrow">Referentes que te cuentan su camino</Text>
+          <div className="flex items-end justify-between gap-6">
+            <Text variant="eyebrow">Referentes que te cuentan su camino</Text>
+            <Mascot
+              pose="sorprendido"
+              className="w-24 shrink-0 animate-mascot-float sm:w-32 motion-reduce:animate-none"
+            />
+          </div>
           <ul className="mt-6 grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-4">
             {referents.map((referent, index) => {
               const tone = relayAt(index);

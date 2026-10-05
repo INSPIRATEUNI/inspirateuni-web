@@ -9,6 +9,7 @@ import {
   SparkleIcon,
   UsersIcon,
 } from "@/components/site/Icons";
+import { Mascot } from "@/components/site/Mascot";
 import { contact } from "@/components/site/navigation";
 import { buttonClasses } from "@/components/ui/Button";
 import { GradientText } from "@/components/ui/GradientText";
@@ -153,9 +154,15 @@ export default function OpenDayPage() {
         </div>
 
         <div className="mt-16">
-          <Heading variant="feature" level={2}>
-            Así será tu día.
-          </Heading>
+          <div className="flex items-end justify-between gap-6">
+            <Heading variant="feature" level={2}>
+              Así será tu día.
+            </Heading>
+            <Mascot
+              pose="alegre"
+              className="w-24 shrink-0 animate-mascot-float sm:w-32 motion-reduce:animate-none"
+            />
+          </div>
           <div className="relative mt-10 md:pt-[150px]">
             <svg
               viewBox="0 0 1000 120"
