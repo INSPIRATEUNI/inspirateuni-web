@@ -20,6 +20,17 @@ const INTERVAL_MS = 6000;
 const controlClasses =
   "grid size-11 place-items-center rounded-full bg-white/90 text-foreground shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
+/**
+ * Fundido encadenado: la foto que entra aparece encima y la que sale espera
+ * a que termine para apagarse, así nunca se ve el fondo a medio cambio.
+ */
+function fadeClasses(shown: boolean) {
+  return cn(
+    "transition-[opacity,visibility] duration-700 ease-in-out motion-reduce:transition-none",
+    shown ? "z-2 opacity-100" : "invisible z-1 opacity-0 delay-700",
+  );
+}
+
 type WelcomeCarouselProps = {
   slides: Slide[];
   className?: string;
@@ -93,10 +104,7 @@ export function WelcomeCarousel({ slides, className }: WelcomeCarouselProps) {
               aria-label={`${index + 1} de ${count}`}
               aria-hidden={!current}
               inert={!current}
-              className={cn(
-                "absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none",
-                current ? "opacity-100" : "invisible opacity-0",
-              )}
+              className={cn("absolute inset-0", fadeClasses(current))}
             >
               <Image
                 src={slide.image.src}
@@ -110,7 +118,13 @@ export function WelcomeCarousel({ slides, className }: WelcomeCarouselProps) {
                 aria-hidden="true"
                 className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent"
               />
-              <div className="absolute inset-x-0 bottom-0 p-6 pb-20 text-white sm:max-w-2xl sm:p-10 sm:pb-24">
+              <div
+                className={cn(
+                  "absolute inset-x-0 bottom-0 p-6 pb-20 text-white transition-[opacity,translate] duration-500 sm:max-w-2xl sm:p-10 sm:pb-24 motion-reduce:transition-none",
+                  // El texto entra cuando la foto ya terminó de aparecer
+                  current ? "delay-500" : "translate-y-3 opacity-0",
+                )}
+              >
                 <span
                   aria-hidden="true"
                   className={cn(
@@ -118,7 +132,11 @@ export function WelcomeCarousel({ slides, className }: WelcomeCarouselProps) {
                     relayClasses[slide.tone].dot,
                   )}
                 />
-                <Heading variant="feature" level={3} className="mt-4">
+                <Heading
+                  variant="feature"
+                  level={3}
+                  className="mt-4 text-white"
+                >
                   {slide.title}
                 </Heading>
                 <p className="mt-2 text-base text-white/85 sm:text-lg">
@@ -135,7 +153,7 @@ export function WelcomeCarousel({ slides, className }: WelcomeCarouselProps) {
         })}
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 p-6 sm:px-10">
+      <div className="absolute inset-x-0 bottom-0 z-3 flex items-center justify-between gap-4 p-6 sm:px-10">
         <div className="flex items-center gap-2">
           {slides.map((slide, index) => (
             <button
