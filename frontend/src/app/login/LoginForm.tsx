@@ -14,14 +14,12 @@ type Errors = { email?: string; password?: string };
 const FAKE_LATENCY_MS = 900;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** "ana.perez@uni.pe" -> "Ana". */
 function firstNameFrom(email: string) {
   const [local = ""] = email.split("@");
   const [name = ""] = local.split(/[._-]/);
   return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 }
 
-/** Maqueta: acepta cualquier credencial válida; aún no hay sesión con JWT. */
 export function LoginForm() {
   const [status, setStatus] = useState<Status>("idle");
   const [errors, setErrors] = useState<Errors>({});
