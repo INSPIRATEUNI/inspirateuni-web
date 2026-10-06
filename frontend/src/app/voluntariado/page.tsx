@@ -1,13 +1,22 @@
 import { ImageSlot } from "@/components/gallery/ImageSlot";
-import { SparkleIcon } from "@/components/site/Icons";
+import { Bullets } from "@/components/programs/Bullets";
+import { BoltIcon, CalendarIcon, SparkleIcon } from "@/components/site/Icons";
 import { Mascot } from "@/components/site/Mascot";
-import { socialLinks } from "@/components/site/navigation";
+import { contact, socialLinks } from "@/components/site/navigation";
+import { buttonClasses } from "@/components/ui/Button";
 import { GradientText } from "@/components/ui/GradientText";
 import { Heading } from "@/components/ui/Heading";
 import { Tag } from "@/components/ui/Tag";
 import { Text } from "@/components/ui/Text";
+import {
+  beneficios,
+  capacitacion,
+  convocatoria,
+  embajadores,
+  funciones,
+} from "@/data/voluntariado";
 import { cn } from "@/lib/cn";
-import { type RelayColor, relayAt, relayClasses } from "@/lib/relay";
+import { type RelayColor, relayAt } from "@/lib/relay";
 
 const statClasses: Record<RelayColor, string> = {
   magenta: "text-magenta-deep",
@@ -16,15 +25,12 @@ const statClasses: Record<RelayColor, string> = {
   green: "text-green-deep",
 };
 
-/** Cifras del prototipo hasta tener las reales. */
-const stats = [
-  { value: "+120", label: "Colegios visitados" },
-  { value: "+8 500", label: "Escolares orientados" },
-  { value: "150", label: "Voluntarios activos" },
-  { value: "6", label: "Ediciones de Open Day" },
-];
-
-const values = ["Vocación", "Cercanía", "Curiosidad", "Equidad"];
+const borderClasses: Record<RelayColor, string> = {
+  magenta: "border-magenta",
+  orange: "border-orange",
+  blue: "border-blue",
+  green: "border-green",
+};
 
 export default function VoluntariadoPage() {
   return (
@@ -32,88 +38,150 @@ export default function VoluntariadoPage() {
       <section className="relative overflow-hidden pt-14 pb-20">
         <div
           aria-hidden="true"
-          className="blob top-24 -right-20 size-72 bg-magenta [animation-delay:-6s]"
+          className="blob top-24 -right-20 size-72 bg-green [animation-delay:-6s]"
         />
-        <div className="container-site z-1 grid max-w-6xl items-center gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
-          <div className="relative mx-auto w-full max-w-lg">
-            <div
-              aria-hidden="true"
-              className="absolute -inset-4 -rotate-3 rounded-blob bg-green-soft"
-            />
-            <ImageSlot
-              fallbackAlt="equipo de voluntarios en el campus"
-              tone="blue"
-              shape="landscape"
-              className="relative"
-            />
-          </div>
-
+        <div className="container-site z-1 grid max-w-6xl items-center gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
           <div>
             <Tag tone="green">
               <SparkleIcon className="size-3.5" />
-              Quiénes somos
+              Voluntariado
             </Tag>
             <Heading variant="page" className="mt-4">
-              Estudiantes que{" "}
-              <GradientText gradient="fresh">abren la puerta</GradientText> de
-              la UNI.
+              Conviértete en{" "}
+              <GradientText gradient="fresh">agente de cambio</GradientText>.
             </Heading>
             <Text variant="lead" className="mt-6">
-              Inspírate UNI es un voluntariado de estudiantes de la Universidad
-              Nacional de Ingeniería. Desde 2018 acompañamos a escolares y
-              preuniversitarios a elegir su carrera de la mejor forma que
-              conocemos: viviéndola.
+              Si estudias en la UNI y te mueve orientar a otros jóvenes, súmate
+              al equipo que hace posible el Open Day y los programas de
+              Inspírate.
             </Text>
-            <Text variant="muted" className="mt-4">
-              Creemos que nadie debería decidir su futuro solo con un folleto.
-              Por eso organizamos recorridos, abrimos laboratorios, visitamos
-              colegios y contamos cómo es de verdad estudiar ingeniería,
-              ciencias y arquitectura.
-            </Text>
-            <ul
-              aria-label="Nuestros valores"
-              className="mt-8 flex flex-wrap gap-2.5"
+            <p className="mt-6 flex items-center gap-3 font-bold">
+              <span
+                aria-hidden="true"
+                className="grid size-10 shrink-0 place-items-center rounded-leaf-xs bg-green-soft text-green-ink"
+              >
+                <CalendarIcon />
+              </span>
+              <span>
+                <span className="block text-xs font-extrabold tracking-widest text-muted-foreground uppercase">
+                  Convocatoria 2026
+                </span>
+                <time dateTime={convocatoria.start}>{convocatoria.label}</time>
+              </span>
+            </p>
+            <a
+              href={`mailto:${contact.email}?subject=Quiero ser voluntario de Inspírate UNI`}
+              className={buttonClasses({ className: "mt-8" })}
             >
-              {values.map((value, index) => (
-                <li key={value}>
-                  <Tag variant="neutral">
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "size-2 rounded-full",
-                        relayClasses[relayAt(index)].dot,
-                      )}
-                    />
-                    {value}
-                  </Tag>
-                </li>
-              ))}
-            </ul>
+              Quiero ser voluntario
+              <BoltIcon />
+            </a>
+          </div>
+
+          <div className="relative mx-auto w-56 sm:w-64 lg:w-80">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-0 h-3/4 rounded-blob bg-green-soft"
+            />
+            <div className="relative animate-mascot-float motion-reduce:animate-none">
+              <Mascot
+                pose="alegre"
+                preload
+                className="w-full origin-bottom animate-mascot-sway motion-reduce:animate-none"
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      <section aria-label="Nuestro impacto" className="bg-tint-blue py-14">
-        <dl className="container-site grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 md:gap-0">
-          {stats.map((stat, index) => (
-            <div
-              key={stat.label}
-              className="flex flex-col-reverse text-center md:[&+&]:border-l md:[&+&]:border-border"
-            >
-              <dt className="mt-2.5 text-xs font-extrabold tracking-widest text-muted-foreground uppercase">
-                {stat.label}
-              </dt>
-              <dd
-                className={cn(
-                  "font-display text-[clamp(2.25rem,1.8rem+1.6vw,3rem)] leading-none font-bold",
-                  statClasses[relayAt(index)],
-                )}
+      <section className="bg-tint-green py-16">
+        <div className="container-site grid max-w-6xl gap-12 md:grid-cols-2">
+          <div>
+            <Heading variant="section">
+              Lo que <GradientText gradient="fresh">harás</GradientText>.
+            </Heading>
+            <Bullets items={funciones} tone="green" className="mt-6" />
+          </div>
+          <div>
+            <Heading variant="section">
+              Lo que <GradientText gradient="energy">te llevas</GradientText>.
+            </Heading>
+            <Bullets items={beneficios} tone="magenta" className="mt-6" />
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container-site max-w-6xl">
+          <Heading variant="section">
+            Te <GradientText gradient="discover">preparamos</GradientText>.
+          </Heading>
+          <ul className="mt-8 grid gap-8 md:grid-cols-3">
+            {capacitacion.map((item, index) => (
+              <li
+                key={item.title}
+                className={cn("border-t-4 pt-4", borderClasses[relayAt(index)])}
               >
-                {stat.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
+                <Heading variant="item" level={3}>
+                  {item.title}
+                </Heading>
+                <Text variant="muted" className="mt-1.5">
+                  {item.text}
+                </Text>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="bg-tint-blue py-16">
+        <div className="container-site grid max-w-6xl items-center gap-10 md:grid-cols-2 md:gap-14">
+          <ImageSlot
+            image={{
+              src: "/fotos/voluntariado/marco-equipo.webp",
+              alt: "Tres voluntarios de Inspírate UNI posan dentro del marco del logo",
+            }}
+            fallbackAlt="embajadores de Inspírate UNI"
+            tone="blue"
+            shape="landscape"
+          />
+          <div>
+            <Tag tone="blue">PROEMIN</Tag>
+            <Heading variant="section" className="mt-4">
+              Embajadores que{" "}
+              <GradientText gradient="discover">inspiran</GradientText>.
+            </Heading>
+            <Text variant="muted" className="mt-4">
+              Representa a tu facultad y a tus especialidades: prepara guías y
+              material, mapea egresados destacados y atiende orientaciones
+              virtuales. {embajadores.requisito}
+            </Text>
+            <ul className="mt-5 flex flex-wrap gap-2">
+              {embajadores.cargos.map((cargo) => (
+                <li key={cargo}>
+                  <Tag variant="neutral">{cargo}</Tag>
+                </li>
+              ))}
+            </ul>
+            <dl className="mt-7 grid grid-cols-3 gap-4">
+              {embajadores.stats.map((stat, index) => (
+                <div key={stat.label} className="flex flex-col-reverse">
+                  <dt className="mt-1.5 text-xs font-extrabold tracking-widest text-muted-foreground uppercase">
+                    {stat.label}
+                  </dt>
+                  <dd
+                    className={cn(
+                      "font-display text-[2rem] leading-none font-bold",
+                      statClasses[relayAt(index)],
+                    )}
+                  >
+                    {stat.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
       </section>
 
       <section className="relative overflow-hidden py-20">
@@ -128,12 +196,15 @@ export default function VoluntariadoPage() {
           />
           <div>
             <Heading variant="section">
-              ¿Cómo me hago{" "}
-              <GradientText gradient="energy">voluntario</GradientText>?
+              Entérate de la{" "}
+              <GradientText gradient="energy">
+                próxima convocatoria
+              </GradientText>
+              .
             </Heading>
             <Text variant="lead" className="mt-4">
-              Si estudias en la UNI, abrimos convocatoria dos veces al año.
-              Síguenos en redes para enterarte de la próxima.
+              Publicamos cada convocatoria en nuestras redes. Síguenos para no
+              perdértela.
             </Text>
             <ul className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
               {socialLinks.map((link) => (

@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { ImageSlot } from "@/components/gallery/ImageSlot";
-import { Countdown } from "@/components/programs/Countdown";
+import { Breadcrumb } from "@/components/programs/Breadcrumb";
 import {
   BoltIcon,
   CalendarIcon,
-  ClockIcon,
+  CampusIcon,
   PinIcon,
   SparkleIcon,
   UsersIcon,
@@ -16,52 +16,36 @@ import { GradientText } from "@/components/ui/GradientText";
 import { Heading } from "@/components/ui/Heading";
 import { Tag } from "@/components/ui/Tag";
 import { Text } from "@/components/ui/Text";
-import { eventos } from "@/data/eventos";
+import { ediciones } from "@/data/organizacion";
+import { galeriaOpenDay, openDay } from "@/data/provov";
 import { cn } from "@/lib/cn";
-
-const openDay = eventos.find((evento) => evento.id === "open-day-2026");
-const OPEN_DAY_DATE = openDay?.date ?? "2026-11-14T09:00:00-05:00";
+import { relayAt } from "@/lib/relay";
 
 const details: { icon: ReactNode; label: string; value: string }[] = [
   {
     icon: <CalendarIcon />,
     label: "Fecha",
-    value: "Sábado 14 de noviembre de 2026",
+    value: `Por anunciar. Síguenos con ${openDay.hashtag}`,
   },
-  { icon: <ClockIcon />, label: "Horario", value: "De 9:00 a 14:00" },
   {
     icon: <PinIcon className="size-5" />,
     label: "Lugar",
-    value: "Campus UNI, Av. Túpac Amaru 210, Rímac",
+    value: openDay.place,
   },
+  { icon: <UsersIcon />, label: "Para", value: openDay.audience },
   {
-    icon: <UsersIcon />,
-    label: "Para",
-    value: "Escolares de 4.° y 5.° de secundaria y preuniversitarios",
+    icon: <CampusIcon className="size-5" />,
+    label: "Alcance",
+    value: "Hasta 6000 jóvenes en la edición 2023",
   },
 ];
 
-const steps = [
-  {
-    time: "9:00",
-    title: "Bienvenida",
-    text: "Te recibimos en la puerta, te damos tu mapa y armamos grupos por intereses.",
-  },
-  {
-    time: "10:00",
-    title: "Recorrido por el campus",
-    text: "Caminamos por las facultades con voluntarios de cada carrera.",
-  },
-  {
-    time: "11:30",
-    title: "Laboratorios abiertos",
-    text: "Robótica, química, estructuras y más. Mira cómo se trabaja de verdad.",
-  },
-  {
-    time: "13:00",
-    title: "Conoce las especialidades",
-    text: "Charlas cortas y preguntas libres con estudiantes de cada especialidad.",
-  },
+/** Icono de cada actividad en la línea del día. */
+const activityIcons = [
+  <CampusIcon key="tour" className="size-6" />,
+  <SparkleIcon key="feria" className="size-6" />,
+  <BoltIcon key="taller" className="size-6" />,
+  <UsersIcon key="charla" className="size-6" />,
 ];
 
 /** Color del relay por paso, con su brillo. */
@@ -87,6 +71,10 @@ export default function OpenDayPage() {
       <div className="container-site z-1 max-w-6xl">
         <div className="grid items-start gap-14 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
           <div>
+            <Breadcrumb
+              parent={{ label: "PROVOV", href: "/provov" }}
+              current="Open Day"
+            />
             <Tag tone="orange">
               <SparkleIcon className="size-3.5" />
               Open Day UNI 2026
@@ -99,8 +87,7 @@ export default function OpenDayPage() {
               .
             </Heading>
             <Text variant="lead" className="mt-5">
-              Un sábado entero para caminar la UNI, entrar a los laboratorios y
-              preguntarle todo a quienes ya estudian aquí.
+              {openDay.description}
             </Text>
             <dl className="mt-8 grid gap-4">
               {details.map((detail) => (
@@ -121,34 +108,34 @@ export default function OpenDayPage() {
               ))}
             </dl>
             <a
-              href={`mailto:${contact.email}?subject=Inscripción al Open Day UNI 2026`}
+              href={`mailto:${contact.email}?subject=Quiero ir al Open Day UNI 2026`}
               className={buttonClasses({ className: "mt-8" })}
             >
-              Inscríbete gratis
+              Avísame cuando abra la inscripción
               <BoltIcon />
             </a>
           </div>
 
-          <div>
-            <Text variant="eyebrow">Faltan</Text>
-            <Countdown
-              target={OPEN_DAY_DATE}
-              label="Cuenta regresiva para el Open Day UNI"
-              className="mt-3"
+          <div className="relative pb-12">
+            <ImageSlot
+              image={{
+                src: "/fotos/open-day/fc-quimica-demostracion.webp",
+                alt: "Escolares y padres frente al stand de Química en la feria de carreras",
+              }}
+              fallbackAlt="feria de carreras durante el Open Day"
+              tone="orange"
+              shape="landscape"
             />
-            <div className="relative mt-10 pb-12">
+            <div className="absolute bottom-0 left-0 w-[42%] rounded-leaf ring-6 ring-background">
               <ImageSlot
-                fallbackAlt="patio central durante el Open Day"
-                tone="orange"
+                image={{
+                  src: "/fotos/open-day/fiee-demo-circuito.webp",
+                  alt: "Escolares prueban un circuito junto a estudiantes de la FIEE",
+                }}
+                fallbackAlt="demo en laboratorio"
+                tone="blue"
                 shape="landscape"
               />
-              <div className="absolute bottom-0 left-0 w-[42%] rounded-leaf ring-6 ring-background">
-                <ImageSlot
-                  fallbackAlt="demo en laboratorio"
-                  tone="blue"
-                  shape="landscape"
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -156,7 +143,7 @@ export default function OpenDayPage() {
         <div className="mt-16">
           <div className="flex items-end justify-between gap-6">
             <Heading variant="feature" level={2}>
-              Así será tu día.
+              Así se vive el día.
             </Heading>
             <Mascot
               pose="alegre"
@@ -190,10 +177,10 @@ export default function OpenDayPage() {
               />
             </svg>
             <ol className="ml-7 grid gap-9 border-l-2 border-dashed border-blue/40 pl-11 md:m-0 md:grid-cols-4 md:gap-0 md:border-0 md:p-0 md:text-center">
-              {steps.map((step, index) => {
+              {openDay.actividades.map((step, index) => {
                 const up = index % 2 === 0;
                 return (
-                  <li key={step.time} className="relative min-h-14 md:px-4">
+                  <li key={step.title} className="relative min-h-14 md:px-4">
                     {/* Conector entre la curva y el texto */}
                     <span
                       aria-hidden="true"
@@ -205,13 +192,13 @@ export default function OpenDayPage() {
                     />
                     <span
                       className={cn(
-                        "absolute -top-1 -left-11 grid size-14 -translate-x-[calc(50%+1px)] place-items-center rounded-full font-display text-[0.95rem] font-bold text-white",
-                        "md:left-1/2 md:size-16 md:-translate-x-1/2 md:-translate-y-1/2 md:text-base",
+                        "absolute -top-1 -left-11 grid size-14 -translate-x-[calc(50%+1px)] place-items-center rounded-full text-white",
+                        "md:left-1/2 md:size-16 md:-translate-x-1/2 md:-translate-y-1/2",
                         up ? "md:-top-[120px]" : "md:-top-[60px]",
                         badgeClasses[index % badgeClasses.length],
                       )}
                     >
-                      {step.time}
+                      {activityIcons[index]}
                     </span>
                     <Heading variant="item" level={3}>
                       {step.title}
@@ -223,6 +210,79 @@ export default function OpenDayPage() {
                 );
               })}
             </ol>
+          </div>
+        </div>
+
+        <div className="mt-20">
+          <Heading variant="feature" level={2}>
+            Así fue el Open Day 2019.
+          </Heading>
+          <Text variant="muted" className="mt-2">
+            Más de 6500 escolares y 358 voluntarios recorrieron la UNI en
+            nuestra edición récord.
+          </Text>
+          <ul className="mt-8 grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-4">
+            {galeriaOpenDay.map((foto, index) => (
+              <li key={foto.src}>
+                <ImageSlot
+                  image={foto}
+                  fallbackAlt={foto.alt}
+                  tone={relayAt(index)}
+                  shape="portrait"
+                />
+                <p className="mt-2.5 text-sm font-bold text-muted-foreground">
+                  {foto.faculty}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-20">
+          <Heading variant="feature" level={2}>
+            Ediciones anteriores.
+          </Heading>
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-md text-left">
+              <thead className="text-xs font-extrabold tracking-widest text-muted-foreground uppercase">
+                <tr className="border-b border-border">
+                  <th scope="col" className="py-3 pr-4">
+                    Año
+                  </th>
+                  <th scope="col" className="py-3 pr-4">
+                    Modalidad
+                  </th>
+                  <th scope="col" className="py-3 pr-4">
+                    Escolares
+                  </th>
+                  <th scope="col" className="py-3">
+                    Voluntarios
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ediciones.map((edicion) => (
+                  <tr
+                    key={edicion.year}
+                    className="border-b border-border/70 align-top"
+                  >
+                    <th scope="row" className="py-3 pr-4 font-display text-lg">
+                      {edicion.year}
+                    </th>
+                    <td className="py-3 pr-4">
+                      {edicion.mode}
+                      {edicion.note && (
+                        <span className="block text-sm text-muted-foreground">
+                          {edicion.note}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4 font-bold">{edicion.students}</td>
+                    <td className="py-3 font-bold">{edicion.volunteers}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

@@ -1,96 +1,71 @@
 import type { GalleryItem } from "@/lib/gallery";
+import { ovpgs } from "./provov";
+import { convocatoria } from "./voluntariado";
 
-/** Datos de ejemplo hasta conectar la tabla de eventos en Supabase. */
+/**
+ * Eventos confirmados en el Perfil de Inspírate UNI v0.1, hasta conectar la
+ * tabla de eventos en Supabase. Lo que aún no tiene fecha va sin `date`.
+ */
 export const eventos: GalleryItem[] = [
+  {
+    id: "convocatoria-voluntarios-2026",
+    title: "Convocatoria de voluntarios 2026",
+    description:
+      "Si estudias en la UNI, súmate como agente de cambio para el Open Day y los programas de Inspírate.",
+    details: `${convocatoria.label}. Incluye 4 módulos de capacitación y horas extracurriculares certificadas.`,
+    date: convocatoria.end,
+    location: "Universidad Nacional de Ingeniería",
+    category: { label: "Voluntariado", tone: "green" },
+    image: {
+      src: "/fotos/voluntariado/equipo-con-mascota.webp",
+      alt: "Equipo de voluntarios de Inspírate UNI con la mascota en el jardín del campus",
+    },
+    cta: { label: "Quiero ser voluntario", href: "/voluntariado" },
+  },
+  {
+    id: "ovpgs-2026",
+    title: "Inicia la orientación virtual (OVPGS)",
+    description:
+      "Orientaciones vocacionales virtuales, personalizadas o grupales, con estudiantes de las distintas especialidades.",
+    details: ovpgs.description,
+    date: ovpgs.inicio,
+    allDay: true,
+    location: "En línea",
+    category: { label: "PROVOV", tone: "orange" },
+    image: {
+      src: "/fotos/open-day/fieecs-laboratorio-computo.webp",
+      alt: "Estudiante orienta a escolares en un laboratorio de cómputo",
+    },
+    cta: { label: "Conoce el PROVOV", href: "/provov" },
+  },
   {
     id: "open-day-2026",
     title: "Open Day UNI 2026",
     description:
-      "Recorre el campus, entra a los laboratorios y conversa con estudiantes de todas las facultades en un solo día.",
+      "Un día para recorrer las 11 facultades, visitar la feria de carreras y vivir talleres en el campus. Fecha por anunciar.",
     details:
-      "Llega con tu familia: habrá guías por facultad, demostraciones en vivo y un espacio para resolver tus dudas sobre el examen de admisión.",
-    date: "2026-11-14T09:00:00-05:00",
+      "En 2026 la Feria de Carreras y la Feria Cultural comparten el Coliseo. Síguenos en redes con #OpenDayUNI para enterarte de la fecha.",
     location: "Campus UNI, Rímac",
-    category: { label: "Presencial", tone: "orange" },
+    category: { label: "PROVOV", tone: "orange" },
     image: {
-      src: "/fotos/prueba/evento-open-day-2026.jpg",
-      alt: "Estudiantes recorriendo el campus durante el Open Day",
+      src: "/fotos/open-day/fc-quimica-demostracion.webp",
+      alt: "Escolares y padres frente al stand de Química en la feria de carreras",
     },
-    cta: { label: "Quiero ir", href: "/OpenDay" },
+    cta: { label: "Ver Open Day", href: "/provov/open-day" },
   },
   {
-    id: "charla-elegir-carrera",
-    title: "Cómo elegir tu carrera sin miedo",
+    id: "dia-de-la-nina",
+    title: "Día de la Niña",
     description:
-      "Una charla para descubrir qué te mueve y cómo se conecta con las ingenierías, contada por estudiantes como tú.",
-    date: "2026-10-22T18:00:00-05:00",
-    location: "En línea",
-    category: { label: "Charlas", tone: "blue" },
-    image: {
-      src: "/fotos/prueba/evento-charla-elegir-carrera.jpg",
-      alt: "Estudiante dando una charla frente a escolares",
-    },
-  },
-  {
-    id: "mujeres-en-ciencia",
-    title: "Mujeres que inspiran ciencia",
-    description:
-      "Ingenieras y científicas comparten su camino, sus retos y lo que les hubiera gustado saber a tu edad.",
-    date: "2026-10-30T16:00:00-05:00",
-    location: "Auditorio de la Facultad de Ciencias",
+      "Niñas y adolescentes visitan la UNI y eligen qué carreras conocer, con visitas guiadas y talleres. Fecha por anunciar.",
+    details:
+      "Se conmemora cada 11 de octubre. Facultades propuestas: FIM, FIC, FIIS, FC, FIA y FIEECS.",
+    location: "Campus UNI, Rímac",
     category: { label: "Inspírate Girl", tone: "magenta" },
     image: {
-      src: "/fotos/prueba/evento-mujeres-en-ciencia.jpg",
-      alt: "Panel de ingenieras conversando con escolares",
+      src: "/fotos/open-day/escolares-laboratorio-quimica.webp",
+      alt: "Escolares escuchan a un estudiante en el laboratorio de Química",
     },
-    cta: { label: "Conoce Inspírate Girl", href: "/Igirl" },
-  },
-  {
-    id: "taller-robotica",
-    title: "Taller de robótica para escolares",
-    description:
-      "Arma y programa tu primer robot en equipo, guiado por estudiantes de Ingeniería Mecatrónica.",
-    date: "2026-11-07T10:00:00-05:00",
-    location: "Laboratorio de Mecatrónica",
-    category: { label: "Programa", tone: "green" },
-    image: {
-      src: "/fotos/prueba/evento-taller-robotica.jpg",
-      alt: "Escolares armando un robot en el laboratorio",
-    },
-  },
-];
-
-export const programas: GalleryItem[] = [
-  {
-    id: "open-day",
-    title: "Open Day",
-    description:
-      "Un día de puertas abiertas para que vivas la UNI por dentro antes de postular.",
-    icon: "campus",
-    cta: { label: "Ver Open Day", href: "/OpenDay" },
-  },
-  {
-    id: "inspirate-girl",
-    title: "Inspírate Girl",
-    description:
-      "Charlas y mentorías con mujeres en ciencia e ingeniería para que te animes a dar el paso.",
-    icon: "girl",
-    cta: { label: "Ver Inspírate Girl", href: "/Igirl" },
-  },
-  {
-    id: "visitas-guiadas",
-    title: "Visitas guiadas",
-    description:
-      "Agenda una visita con tu colegio y recorre las facultades acompañado por voluntarios.",
-    icon: "pin",
-    cta: { label: "Pide una visita", href: "/ovpgs" },
-  },
-  {
-    id: "voluntariado",
-    title: "Voluntariado",
-    description:
-      "Si ya estás en la UNI, súmate al equipo y ayuda a otros escolares a encontrar su camino.",
-    icon: "heart",
-    cta: { label: "Quiero ser voluntario", href: "/voluntariado" },
+    cta: { label: "Conoce Inspírate Girl", href: "/inspirate-girl" },
   },
 ];

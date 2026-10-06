@@ -67,6 +67,19 @@ const steps: Step[] = [
     icon: <CalendarIcon />,
     fields: (
       <>
+        <Field
+          id="visit-mode"
+          label="¿Dónde será la visita?"
+          className="sm:col-span-2"
+        >
+          <Select id="visit-mode" name="mode" defaultValue="" required>
+            <option value="" disabled>
+              Elige una modalidad
+            </option>
+            <option value="uni">Vamos a la UNI</option>
+            <option value="colegio">Vengan a nuestro colegio</option>
+          </Select>
+        </Field>
         <Field id="visit-date" label="¿Qué día te acomoda?">
           <Input type="date" id="visit-date" name="date" required />
         </Field>
@@ -113,7 +126,6 @@ const steps: Step[] = [
   },
 ];
 
-/** Maqueta: no envía nada todavía, solo muestra la confirmación. */
 export function VisitForm() {
   const [sent, setSent] = useState(false);
 

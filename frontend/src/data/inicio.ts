@@ -11,53 +11,53 @@ export type Slide = {
   cta?: { label: string; href: Route };
 };
 
-/** Fotos de prueba*/
+/** Fotos reales del Open Day 2019. */
 export const slides: Slide[] = [
   {
     id: "open-day",
     title: "Un día entero dentro de la UNI",
     description:
-      "Laboratorios abiertos, guías por facultad y estudiantes listos para contarte cómo es su día a día.",
+      "Talleres, laboratorios abiertos y estudiantes de las 11 facultades listos para contarte cómo es su día a día.",
     tone: "orange",
     image: {
-      src: "/fotos/prueba/carrusel-1.jpg",
-      alt: "Escolares recorriendo el campus de la UNI",
+      src: "/fotos/open-day/faua-taller-estructuras.webp",
+      alt: "Escolares arman una estructura de varillas en un taller de Arquitectura",
     },
-    cta: { label: "Conoce el Open Day", href: "/OpenDay" },
+    cta: { label: "Conoce el Open Day", href: "/provov/open-day" },
   },
   {
-    id: "charlas",
-    title: "Charlas de tú a tú",
+    id: "feria",
+    title: "Una feria con todas las carreras",
     description:
-      "Escucha a estudiantes de cada carrera hablar sin filtros de lo que estudian y de lo que viene después.",
+      "Cada escuela te muestra su carrera, sus campos de aplicación y su malla curricular, con experimentos en vivo.",
     tone: "blue",
     image: {
-      src: "/fotos/prueba/carrusel-2.jpg",
-      alt: "Estudiante conversando con un grupo de escolares",
+      src: "/fotos/open-day/fiee-demo-circuito.webp",
+      alt: "Escolares prueban un circuito junto a estudiantes de la FIEE",
     },
-    cta: { label: "Mira los eventos", href: "/eventos" },
+    cta: { label: "Conoce el PROVOV", href: "/provov" },
   },
   {
     id: "inspirate-girl",
-    title: "Más mujeres en la ingeniería",
+    title: "Más mujeres en carreras STEM",
     description:
-      "Ingenieras y científicas te cuentan su camino para que te animes a dar el paso.",
+      "Olvida los estereotipos y cree en ti: egresadas y alumnas te cuentan su camino en la ciencia y la ingeniería.",
     tone: "magenta",
     image: {
-      src: "/fotos/prueba/carrusel-3.jpg",
-      alt: "Estudiantes de ingeniería trabajando en equipo",
+      src: "/fotos/voluntariado/voluntarias.webp",
+      alt: "Cuatro voluntarias de Inspírate UNI posan juntas en el campus",
     },
-    cta: { label: "Conoce Inspírate Girl", href: "/Igirl" },
+    cta: { label: "Conoce Inspírate Girl", href: "/inspirate-girl" },
   },
   {
     id: "voluntariado",
-    title: "Hecho por voluntarios",
+    title: "Hecho por agentes de cambio",
     description:
-      "Somos estudiantes de la UNI que un día también tuvimos dudas. Ahora te acompañamos a ti.",
+      "Somos estudiantes de la UNI que un día también tuvimos dudas. En 2019 fuimos 358 voluntarios.",
     tone: "green",
     image: {
-      src: "/fotos/prueba/carrusel-4.jpg",
-      alt: "Voluntarios de Inspírate UNI reunidos en el campus",
+      src: "/fotos/voluntariado/equipo-con-mascota.webp",
+      alt: "Equipo de voluntarios de Inspírate UNI con la mascota en el jardín del campus",
     },
     cta: { label: "Súmate al equipo", href: "/voluntariado" },
   },

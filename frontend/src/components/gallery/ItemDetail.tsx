@@ -12,7 +12,7 @@ type ItemDetailProps = {
 
 /** Contenido del modal */
 export function ItemDetail({ item, tone }: ItemDetailProps) {
-  const date = item.date ? formatEventDate(item.date) : null;
+  const date = item.date ? formatEventDate(item.date, item.allDay) : null;
 
   return (
     <div className="flex flex-col gap-4">

@@ -20,8 +20,8 @@ export default function EventosPage() {
               <GradientText gradient="fresh">eventos</GradientText>.
             </Heading>
             <Text variant="lead" className="mt-4">
-              Charlas, talleres y visitas para que conozcas la UNI desde
-              adentro. Elige uno y mira todos los detalles.
+              Convocatorias, orientaciones y el Open Day de PROVOV, Inspírate
+              Girl y el voluntariado. Elige uno y mira todos los detalles.
             </Text>
           </div>
           <Mascot

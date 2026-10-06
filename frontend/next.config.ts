@@ -6,6 +6,18 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  // Rutas antiguas, antes de agrupar los subprogramas bajo PROVOV
+  async redirects() {
+    return [
+      { source: "/OpenDay", destination: "/provov/open-day", permanent: true },
+      { source: "/Igirl", destination: "/inspirate-girl", permanent: true },
+      {
+        source: "/ovpgs",
+        destination: "/provov/visitas-guiadas",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

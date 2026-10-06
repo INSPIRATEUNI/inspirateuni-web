@@ -30,8 +30,8 @@ export function Footer() {
               <Image
                 src="/logo.png"
                 alt="Inspírate UNI, volver al inicio"
-                width={776}
-                height={175}
+                width={1600}
+                height={434}
                 className="h-11 w-auto transition-transform duration-250 group-hover:-rotate-2"
               />
             </Link>

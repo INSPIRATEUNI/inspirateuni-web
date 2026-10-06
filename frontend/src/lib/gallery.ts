@@ -15,6 +15,8 @@ export type GalleryItem = {
   description: string;
   details?: ReactNode;
   date?: string;
+  /** La fecha no tiene hora: se muestra solo el día. */
+  allDay?: boolean;
   location?: string;
   category?: { label: string; tone: RelayColor };
   image?: GalleryImage;
@@ -50,12 +52,18 @@ const longFormat = new Intl.DateTimeFormat("es-PE", {
   minute: "2-digit",
   timeZone: TIME_ZONE,
 });
+const dayOnlyFormat = new Intl.DateTimeFormat("es-PE", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: TIME_ZONE,
+});
 
-export function formatEventDate(iso: string) {
+export function formatEventDate(iso: string, allDay = false) {
   const date = new Date(iso);
   return {
     day: dayFormat.format(date),
     month: monthFormat.format(date).replace(".", ""),
-    long: longFormat.format(date),
+    long: (allDay ? dayOnlyFormat : longFormat).format(date),
   };
 }

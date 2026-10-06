@@ -25,7 +25,7 @@ type EventRowProps = {
  * y su área de clic se extiende a toda la fila.
  */
 export function EventRow({ item, tone, onOpen }: EventRowProps) {
-  const date = item.date ? formatEventDate(item.date) : null;
+  const date = item.date ? formatEventDate(item.date, item.allDay) : null;
 
   return (
     <article className="group relative grid grid-cols-[auto_1fr] items-center gap-4 py-5 sm:grid-cols-[auto_1fr_auto] sm:gap-6">
