@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { GalleryTemplate } from "@/components/gallery/GalleryTemplate";
 import { ImageSlot } from "@/components/gallery/ImageSlot";
+import { MascotVideo } from "@/components/home/MascotVideo";
 import { WelcomeCarousel } from "@/components/home/WelcomeCarousel";
 import { Bullets } from "@/components/programs/Bullets";
 import { Mascot } from "@/components/site/Mascot";
@@ -236,11 +237,7 @@ function Hero() {
           />
           {/* Flotación y vaivén con ritmos distintos para que no se vea mecánico */}
           <div className="relative animate-mascot-float motion-reduce:animate-none">
-            <Mascot
-              pose="hola"
-              preload
-              className="w-full origin-bottom animate-mascot-sway motion-reduce:animate-none"
-            />
+            <MascotVideo />
           </div>
         </div>
       </div>
