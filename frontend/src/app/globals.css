@@ -1,1 +1,513 @@
 @import "tailwindcss";
+
+/* ==========================================================================
+   Inspírate UNI: sistema de diseño
+   Paleta tomada del logo (magenta, naranja, azul, verde en orden de letras),
+   base blanca y formas de hoja. Solo se usan estos tokens, nunca colores sueltos.
+   ========================================================================== */
+
+@theme {
+  /* Solo la paleta de marca: se desactiva la paleta por defecto de Tailwind */
+  --color-*: initial;
+  --color-white: oklch(1 0 0);
+
+  /* Base */
+  --color-background: oklch(1 0 0);
+  --color-surface: oklch(1 0 0);
+  --color-foreground: oklch(0.22 0.04 295);
+  --color-muted-foreground: oklch(0.48 0.03 290);
+  --color-border: oklch(0.91 0.015 290);
+  --color-ring: oklch(0.65 0.26 349);
+
+  /* Core: los cuatro colores del logo */
+  --color-magenta: oklch(0.65 0.26 349);
+  --color-orange: oklch(0.71 0.19 50);
+  --color-blue: oklch(0.58 0.17 255);
+  --color-green: oklch(0.69 0.15 160);
+
+  /* Deep: rellenos detrás de texto blanco */
+  --color-magenta-deep: oklch(0.58 0.25 349);
+  --color-orange-deep: oklch(0.63 0.19 45);
+  --color-blue-deep: oklch(0.52 0.17 255);
+  --color-green-deep: oklch(0.56 0.13 162);
+
+  /* Ink: texto pequeño en color de marca */
+  --color-orange-ink: oklch(0.55 0.17 45);
+  --color-green-ink: oklch(0.48 0.12 162);
+
+  /* Soft: tags, placeholders, blobs detrás de imágenes */
+  --color-magenta-soft: oklch(0.93 0.06 349);
+  --color-orange-soft: oklch(0.94 0.05 55);
+  --color-blue-soft: oklch(0.93 0.05 255);
+  --color-green-soft: oklch(0.94 0.06 160);
+
+  /* Tint: fondos de sección completos */
+  --color-tint-magenta: oklch(0.965 0.032 349);
+  --color-tint-orange: oklch(0.97 0.03 55);
+  --color-tint-blue: oklch(0.965 0.028 255);
+  --color-tint-green: oklch(0.97 0.03 160);
+
+  --color-bulb-grey: oklch(0.7 0 0);
+  --color-destructive: oklch(0.6 0.22 25);
+
+  /* Radios: hojas, nunca píldoras */
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  --radius-blob: 42% 58% 63% 37% / 47% 53% 47% 53%;
+  --radius-leaf: 0 2.75rem 0 2.75rem;
+  --radius-leaf-sm: 1.2rem 0 1.2rem 0;
+  --radius-leaf-xs: 0.8rem 0 0.8rem 0;
+
+  /* Sombras */
+  --shadow-glow-magenta: 0 14px 40px -18px
+    color-mix(in oklab, var(--color-magenta) 60%, transparent);
+  --shadow-glow-orange: 0 14px 40px -18px
+    color-mix(in oklab, var(--color-orange) 70%, transparent);
+  --shadow-glow-blue: 0 14px 40px -18px
+    color-mix(in oklab, var(--color-blue) 60%, transparent);
+  --shadow-glow-green: 0 14px 40px -18px
+    color-mix(in oklab, var(--color-green) 65%, transparent);
+  --shadow-soft: 0 8px 30px -12px oklch(0.3 0.05 300 / 0.18);
+
+  /* Movimiento */
+  --animate-rise-in: rise-in 0.8s ease both;
+  --animate-pulse-bulb: pulse-bulb 3.4s ease-in-out infinite;
+  --animate-blob-float: blob-float 18s ease-in-out infinite;
+  --animate-mascot-float: mascot-float 5s ease-in-out infinite;
+  --animate-mascot-sway: mascot-sway 3.6s cubic-bezier(0.45, 0, 0.55, 1)
+    infinite alternate;
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes pulse-bulb {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.75;
+      transform: scale(1.08);
+    }
+  }
+
+  @keyframes mascot-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Vaivén de péndulo desde los pies; con alternate no se detiene a mitad */
+  @keyframes mascot-sway {
+    from {
+      rotate: -1.5deg;
+    }
+    to {
+      rotate: 1.5deg;
+    }
+  }
+
+  @keyframes blob-float {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(30px, -24px) scale(1.05);
+    }
+    66% {
+      transform: translate(-22px, 18px) scale(0.97);
+    }
+  }
+}
+
+/* Las fuentes vienen de next/font (variables definidas en <html>) */
+@theme inline {
+  --font-sans:
+    var(--font-nunito), var(--font-quicksand), ui-sans-serif, system-ui,
+    sans-serif;
+  --font-display:
+    var(--font-quicksand), var(--font-nunito), ui-sans-serif, system-ui,
+    sans-serif;
+}
+
+:root {
+  --header-h: 76px;
+
+  /* Gradientes de marca */
+  --gradient-spectrum: linear-gradient(
+    in oklch 100deg,
+    var(--color-magenta) 0%,
+    var(--color-orange) 33%,
+    var(--color-blue) 66%,
+    var(--color-green) 100%
+  );
+  --gradient-spectrum-head: linear-gradient(
+    100deg,
+    var(--color-magenta) 0%,
+    var(--color-orange) 100%
+  );
+  --gradient-spectrum-tail: linear-gradient(
+    100deg,
+    var(--color-blue) 0%,
+    var(--color-green) 100%
+  );
+  --gradient-energy: linear-gradient(
+    110deg,
+    var(--color-magenta) 0%,
+    var(--color-orange) 100%
+  );
+  --gradient-discover: linear-gradient(
+    135deg,
+    var(--color-blue) 0%,
+    var(--color-magenta) 100%
+  );
+  --gradient-fresh: linear-gradient(
+    120deg,
+    var(--color-green) 0%,
+    var(--color-blue) 100%
+  );
+  --gradient-spark: linear-gradient(
+    in oklch 100deg,
+    var(--color-magenta-deep) 0%,
+    var(--color-orange-deep) 33.3%,
+    var(--color-blue-deep) 66.6%,
+    var(--color-green-deep) 100%
+  );
+  --gradient-leaf: linear-gradient(
+    135deg,
+    var(--color-blue-deep) 0%,
+    var(--color-magenta-deep) 100%
+  );
+}
+
+/* ---------- Base ---------- */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: calc(var(--header-h) + 16px);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--color-foreground);
+  }
+
+  /* Lo animado no sirve de ancla al restaurar el scroll: su movimiento
+     desplaza la página unos píxeles en cada recarga. */
+  [class*="animate-"] {
+    overflow-anchor: none;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-ring);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* ---------- Layout ---------- */
+
+@utility container-site {
+  position: relative;
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+
+  @media (width >= 40rem) {
+    padding-inline: 2rem;
+  }
+}
+
+/* ---------- Tipografía ---------- */
+
+@utility text-display-1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 1.5rem + 4.4vw, 4.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+@utility text-h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 1.9rem + 2.8vw, 3.75rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+@utility text-h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.1rem, 1.5rem + 2.4vw, 3rem);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+@utility text-h3-feature {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+@utility text-h3-item {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+@utility text-lead {
+  font-size: clamp(1.075rem, 1rem + 0.4vw, 1.25rem);
+  line-height: 1.65;
+  color: var(--color-muted-foreground);
+}
+
+@utility text-eyebrow {
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted-foreground);
+}
+
+/* Palabra clave del título. Sin "in oklch" en gradientes de texto. */
+@utility text-gradient-spectrum-head {
+  background-image: var(--gradient-spectrum-head);
+  background-clip: text;
+  color: transparent;
+}
+
+@utility text-gradient-spectrum-tail {
+  background-image: var(--gradient-spectrum-tail);
+  background-clip: text;
+  color: transparent;
+}
+
+@utility text-gradient-energy {
+  background-image: var(--gradient-energy);
+  background-clip: text;
+  color: transparent;
+}
+
+@utility text-gradient-discover {
+  background-image: var(--gradient-discover);
+  background-clip: text;
+  color: transparent;
+}
+
+@utility text-gradient-fresh {
+  background-image: var(--gradient-fresh);
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Fondos de gradiente ---------- */
+
+@utility bg-gradient-spectrum {
+  background-image: var(--gradient-spectrum);
+}
+
+@utility bg-gradient-energy {
+  background-image: var(--gradient-energy);
+}
+
+@utility bg-gradient-discover {
+  background-image: var(--gradient-discover);
+}
+
+@utility bg-gradient-fresh {
+  background-image: var(--gradient-fresh);
+}
+
+@utility bg-gradient-leaf {
+  background-image: var(--gradient-leaf);
+}
+
+/* ---------- Botones (hoja, nunca píldora) ---------- */
+
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1.6rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius-leaf-sm);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+
+  &:disabled,
+  &[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+@utility btn-sm {
+  padding: 0.6rem 1.15rem;
+  font-size: 0.875rem;
+}
+
+/* Primario: el gradiente recorre el logo completo al hacer hover */
+@utility btn-spark {
+  background-color: var(--color-magenta-deep);
+  background-image: var(--gradient-spark);
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  color: var(--color-surface);
+  box-shadow: var(--shadow-glow-magenta);
+  transition:
+    background-position 0.6s ease,
+    transform 0.25s ease,
+    box-shadow 0.4s ease;
+
+  &:hover,
+  &:focus-visible {
+    background-position: 100% 50%;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-blue);
+  }
+
+  /* Sin movimiento: los colores cambian, pero sin deslizar ni elevar */
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:hover,
+    &:focus-visible {
+      transform: none;
+    }
+  }
+}
+
+/* Secundario */
+@utility btn-ghost {
+  background-color: transparent;
+  color: var(--color-foreground);
+  border-color: color-mix(in oklab, var(--color-foreground) 18%, transparent);
+
+  &:hover {
+    border-color: var(--color-blue);
+    color: var(--color-blue-deep);
+    background-color: var(--color-blue-soft);
+  }
+}
+
+@utility text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    opacity 0.25s ease,
+    gap 0.25s ease;
+
+  &:hover {
+    opacity: 0.8;
+    gap: 0.75rem;
+  }
+}
+
+/* ---------- Tags ---------- */
+
+@utility tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-leaf-xs);
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+@utility tag-leaf {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-leaf-sm);
+  background-image: var(--gradient-leaf);
+  color: var(--color-surface);
+  font-size: 0.875rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+/* ---------- Motivos ---------- */
+
+@utility blob {
+  position: absolute;
+  z-index: 0;
+  border-radius: var(--radius-blob);
+  filter: blur(40px);
+  opacity: 0.4;
+  pointer-events: none;
+  /* Si Chrome lo toma como ancla al restaurar el scroll, el vaivén
+     desplaza la página unos píxeles en cada recarga. */
+  overflow-anchor: none;
+  animation: var(--animate-blob-float);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility spectrum-rule {
+  width: 6rem;
+  height: 4px;
+  border-radius: var(--radius-leaf-xs);
+  background-image: var(--gradient-spectrum);
+}

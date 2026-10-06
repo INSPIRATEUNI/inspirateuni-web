@@ -28,12 +28,13 @@
     "supabase": "^2.119.0"
   },
   "lint-staged": {
-    "frontend/**/*.{js,jsx,ts,tsx}": [
-      "prettier --write",
-      "bash -c 'cd frontend && npx eslint --fix \"$@\"' --",
-      "bash -c 'cd frontend && npx tsc --noEmit'"
+    "frontend/**/*.{js,jsx,ts,tsx,mjs,css,json}": [
+      "bash -c 'cd frontend && npx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true \"$@\"' --"
     ],
-    "frontend/**/*.{css,md,json}": [
+    "frontend/**/*.{ts,tsx}": [
+      "bash -c 'cd frontend && npm run typecheck'"
+    ],
+    "frontend/**/*.md": [
       "prettier --write"
     ]
   }
