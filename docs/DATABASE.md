@@ -129,9 +129,10 @@ Cada relación se lee de la tabla con la FK (N) hacia la tabla referenciada. `0.
 - La vista `extracurricular_hours` suma `counted_hours` de las entregas aprobadas por voluntario y período. Es una vista, no una tabla.
 
 ### 3.4 Quién crea tareas
-- `organizational_roles` tiene `access_level` (`board` / `volunteer`) y `is_global` (true para presidente y vice).
+- `organizational_roles` tiene `access_level` (`admin` / `board` / `volunteer`) y `is_global` (true para administrador, presidente y vice).
+- `admin`: rol técnico, sin área. Además de lo de presidente y vice, gestiona períodos, roles, asignaciones y cuentas. Se asigna con un rol "Administrador" en `position_assignments`.
 - Directores: solo crean y revisan tareas de su propia área.
-- Presidente y vice (`is_global`): crean y revisan tareas de **todas** las áreas.
+- Administrador, presidente y vice (`is_global`): crean y revisan tareas de **todas** las áreas.
 - Se aplica en las políticas RLS de `tasks`, `task_assignments` y `task_submissions`.
 
 ### 3.5 Menores de edad
