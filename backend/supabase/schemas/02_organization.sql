@@ -1,4 +1,4 @@
-create type public.access_level as enum ('board', 'volunteer');
+create type public.access_level as enum ('admin', 'board', 'volunteer');
 create type public.period_status as enum ('planned', 'active', 'closed');
 create type public.assignment_status as enum ('active', 'finished');
 
@@ -33,10 +33,10 @@ create table public.organizational_roles (
   name text not null unique,
   access_level public.access_level not null default 'volunteer',
   is_global boolean not null default false,
-  check (not is_global or access_level = 'board')
+  check (not is_global or access_level in ('admin', 'board'))
 );
 
-comment on column public.organizational_roles.is_global is 'Presidente y vice: pueden asignar y revisar tareas en todas las áreas.';
+comment on column public.organizational_roles.is_global is 'Administrador, presidente y vice: pueden asignar y revisar tareas en todas las áreas.';
 
 create table public.position_assignments (
   id uuid primary key default gen_random_uuid(),
