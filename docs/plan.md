@@ -63,13 +63,13 @@
 ## Panorama General de Sprints (Septiembre - Octubre 2026)
 
 **Sprint 1: Cimentación DevOps, Presencia Web y MVP de Intranet (Semanas 1-2)**
-Enfoque en la configuración rigurosa del entorno, CI/CD, migraciones declarativas y las dos prioridades principales: la presencia pública (eventos/programas) y el MVP de la intranet de tareas y horas (los directores asignan tareas, los voluntarios reportan tiempo con evidencia y los directores aprueban o rechazan), permitiendo un ciclo de feedback temprano. Incluye el núcleo organizacional del modelo de datos ([DATABASE.md](./DATABASE.md)).
+Enfoque en la configuración rigurosa del entorno, CI/CD, migraciones declarativas y las dos prioridades principales: la presencia pública (eventos/programas) y el MVP de la intranet de tareas y horas (los directores asignan tareas, los voluntarios reportan tiempo con evidencia y los directores aprueban o rechazan), permitiendo un ciclo de feedback temprano. Incluye el núcleo organizacional del modelo de datos ([DATABASE.md](./DATABASE.md)). Como la inscripción al Open Day pasó a ser prioritaria, su backend arranca en este sprint, en paralelo a la Épica 4 (ver Épica 5).
 
 **Sprint 2: Desarrollo del Módulo OVPGES (Semanas 3-4)**
 Construcción del sistema de Orientaciones Virtuales Personalizadas Grupales para Escolares (OVPGES). Creación de la interfaz privada para que los voluntarios registren su disponibilidad (estado aplanado, sin bucles anidados) y la interfaz pública separada por carreras, con inscripción grupal (cupo de aprox. 10), verificación OTP, límite de una reserva por semana y autorización para menores.
 
 **Sprint 3: Automatización, Integraciones, Webhooks y Open Day (Semanas 5-6)**
-Implementación del envío masivo de correos mediante Google Apps Scripts (por tandas), configuración de Supabase Edge Functions / Webhooks para el enlace de Google Meet de cada bloque OVPGES, y la inscripción al Open Day (personas libres y colegios con lista de alumnos).
+Implementación del envío masivo de correos mediante Google Apps Scripts (por tandas), configuración de Supabase Edge Functions / Webhooks para el enlace de Google Meet de cada bloque OVPGES, y la operación del Open Day (recordatorios, check-in, exportaciones). La inscripción al Open Day se construye antes, en la Épica 5 del Sprint 1.
 
 **Sprint 4: Formularios Internos, QA Final y Lanzamiento (Semanas 7-8)**
 Integración de formularios adicionales en la intranet, resolución del feedback de los voluntarios sobre el registro de horas, pruebas de extremo a extremo (E2E) y pase a producción para la segunda semana de octubre.
@@ -251,6 +251,78 @@ Construcción del sistema cerrado para la Junta Directiva y los voluntarios, y c
 
 ![Secuencia de registro de horas](./visuals/latex/caso_uso_secuencia_registrar_horas/registro.svg)
 
+### Épica 5: Inscripción al Open Day (adelantada desde el Sprint 3)
+
+El formulario de inscripción al Open Day es prioritario, así que se adelanta. Colegios y personas libres eligen hasta 3 recorridos por facultad (uno por nivel de demanda) con cupos que cambian en tiempo real, sin cruces de horario, y entregan sus documentos para que el staff los valide. El diseño completo (reglas, estados, roles y plazos) está en [DATABASE.md](./DATABASE.md), secciones 3.6 a 3.13.
+
+El backend y las Edge Functions pueden avanzar en paralelo a la Épica 4. El frontend público necesita el cliente de Supabase de la Issue 1.4.1, y el backoffice del staff necesita el layout de la intranet de la Issue 1.4.2.
+
+**Issue 1.5.0: Pruebas técnicas previas (spike)**
+
+- **Rol: Integraciones / Backend**
+- Subir un PDF a Drive con la cuenta de servicio mediante una sesión de subida reanudable y confirmar que hay cuota (las cuentas de servicio pueden no tener la propia; si no, usar una unidad compartida o una cuenta institucional).
+- Medir si Apps Script genera un PDF con unos 60 códigos QR dentro de sus límites de tiempo.
+- Decidir el proveedor de correo gratuito para el OTP y los correos transaccionales (Brevo, Resend o solo Apps Script, según haya dominio propio) y confirmar sus límites vigentes.
+
+**Issue 1.5.1: Schema - Catálogo, participantes y extensiones (adelantado del Sprint 2)**
+
+- **Rol: Backend**
+- Añadir `btree_gist` y `pg_cron` a `schemas/00_extension.sql`.
+- Crear `schemas/05_faculties_careers.sql` (`faculties` y `careers`, con los datos iniciales) y `schemas/06_participants.sql` (`schools`, `participants` con `doc_type` + `doc_number` único, `guardian_consents`). Son los mismos de las Issues 2.1.1 y 2.1.2 del Sprint 2; se hacen aquí porque el Open Day los necesita.
+
+**Issue 1.5.2: Schema - Evento, facultades y sesiones**
+
+- **Rol: Backend**
+- Crear `schemas/07_events.sql` con `events` (incluida la configuración editable: plazos, `max_file_mb`, proporciones y topes), `event_faculties` (con `tier`) y `tour_sessions`.
+- Vista segura `v_tour_availability` (cupos restantes, sin datos de inscripciones).
+- RPC `import_tour_sessions()`: carga por CSV, idempotente, con vista previa de cambios.
+
+**Issue 1.5.3: Schema - Inscripciones, asistentes y pases**
+
+- **Rol: Backend**
+- Crear `schemas/08_registrations.sql` con `event_registrations`, `event_attendees` (`attendee_role`, `relationship`), `event_passes`, `tour_enrollments`, `registration_documents`, `document_templates`, `registration_events`, `logistics_options`, `registration_logistics` y `email_outbox`.
+- Restricciones: `UNIQUE (registration_id, tier)`, `EXCLUDE USING gist` contra cruces con margen de traslado, `CHECK (seats_taken <= capacity)`, unicidad de visitante por evento (índice parcial) y una inscripción de colegio por evento.
+- Triggers: copia de `tier` y `time_range`, `event_id` desnormalizado, edad mínima de los roles de adulto y contadores de cupo.
+
+**Issue 1.5.4: RPC y trabajos programados del Open Day**
+
+- **Rol: Backend**
+- Crear `schemas/09_openday_rpc.sql` con las funciones `SECURITY DEFINER` (`search_path` fijo, verificación de `auth.uid()`): `start_registration`, `hold_tour` (cupo atómico y liberación perezosa de retenciones vencidas), `renew_hold`, `confirm_selection` (regla de niveles maximal), `submit_registration`.
+- Funciones del staff: `confirm_registration` (puerta, hora de llegada y generación de pases), `observe_documents` y los overrides de `admin` (reabrir, editar la lista, superar topes, cancelar), todos con motivo y registro en `registration_events`.
+- Jobs de `pg_cron`: liberar retenciones y reservas vencidas, comprobar `seats_taken` contra la suma real y encolar recordatorios.
+
+**Issue 1.5.5: RLS y pruebas pgTAP del Open Day**
+
+- **Rol: Backend**
+- Crear `schemas/10_rls_openday.sql`: el dueño ve y edita solo su inscripción y no escribe directo en las tablas; `board` valida, confirma y exporta; `admin` hace overrides y cambia la configuración.
+- Tests en `supabase/tests/database/`: cupo y concurrencia lógica, cruces, un recorrido por nivel, regla de niveles, proporción de acompañantes, edad de los adultos, duplicado de visitante, vencimiento de retenciones, transiciones de estado y que un usuario no vea inscripciones ajenas.
+
+**Issue 1.5.6: Edge Functions y correo**
+
+- **Rol: Integraciones / Backend**
+- Edge Function que crea la sesión de subida reanudable a Drive, verifica el archivo (tamaño según `max_file_mb`, tipo y `%PDF`) y sirve las descargas al staff comprobando su rol. Todo detrás de `lib/storage.ts`.
+- Cola de correos: webhook sobre `email_outbox`, función con reintentos e idempotencia, y SMTP propio para el OTP de Supabase Auth.
+- Apps Script que genera el PDF de códigos (una tarjeta con QR por persona), guarda una copia en Drive y lo envía adjunto en la confirmación.
+
+**Issue 1.5.7: Frontend público de la inscripción**
+
+- **Rol: Frontend**
+- Rutas bajo `/provov/open-day/inscripcion`: selector, `colegios`, `libres`, `mi-inscripcion` y `mi-inscripcion/codigos` (página imprimible). Seguir el patrón de formulario por pasos de la maqueta existente.
+- Pasos de colegio: OTP con captcha, datos y cantidades, elección de recorridos con temporizador del servidor y avisos de cruces y niveles sin opción, confirmación con advertencia de que no se podrá cambiar, datos de personas (formulario, pegar desde Excel o CSV), plantillas descargables, subida del PDF y logística. Las personas libres siguen una versión reducida.
+- React Hook Form y Zod. La disponibilidad se sirve con un route handler de Next.js con caché corto; no consultar PostgREST desde cada navegador.
+- Leer `frontend/node_modules/next/dist/docs/` antes de escribir código.
+
+**Issue 1.5.8: Backoffice del staff**
+
+- **Rol: Frontend**
+- Rutas bajo `/intranet/open-day`: carga de horarios por CSV, bandeja de inscripciones, validación de documentos con lista de verificación (confirmar u observar), overrides y configuración del evento (solo `admin`), exportaciones (por puerta, por sesión y resumen de logística) y búsqueda para el check-in.
+
+**Issue 1.5.9: Prueba de carga y flujo de extremo a extremo**
+
+- **Rol: DevOps / Backend**
+- Prueba de carga con k6 o pgbench contra un proyecto de pruebas (no producción), simulando la apertura sobre pocas sesiones populares.
+- Automatizar el flujo completo de un colegio y de una persona libre, incluidos el vencimiento de las 48 h y la observación de documentos.
+
 ## Sprint 2: Desarrollo del Módulo OVPGES (Hiperdetallado)
 
 *Duración: Semanas 3-4 | Roles Activos: Frontend (Next.js), Backend (Supabase)*
@@ -259,7 +331,7 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 
 ### Épica 1: Base de Datos y Esquema Relacional de OVPGES (Días 1-4)
 
-**Issue 2.1.1: Schema - Catálogo de Facultades y Carreras**
+**Issue 2.1.1: Schema - Catálogo de Facultades y Carreras** *(adelantada a la Issue 1.5.1)*
 
 - **Rol: Backend**
 - Crear `schemas/05_faculties_careers.sql`.
@@ -267,17 +339,17 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 - Insertar los datos estáticos de la universidad mediante un script SQL inicial para ser consumidos por el cliente.
 - Pendiente de reflejar en `DATABASE.md` y en el diagrama: `availability_slots.career_id` (carrera que orienta el voluntario).
 
-**Issue 2.1.2: Schema - Participantes y Autorización de Menores**
+**Issue 2.1.2: Schema - Participantes y Autorización de Menores** *(adelantada a la Issue 1.5.1)*
 
 - **Rol: Backend**
 - Crear `schemas/06_participants.sql`.
-- Tablas `schools`, `participants` (con `dni` y `email` únicos, `birth_date`, `grade`) y `guardian_consents` (apoderado, documento en Storage, `valid_until`).
+- Tablas `schools`, `participants` (con `(doc_type, doc_number)` y `email` únicos, `birth_date`, `grade`) y `guardian_consents` (apoderado, documento en Storage, `valid_until`).
 - RLS: la información de participantes no es pública; solo se accede mediante funciones RPC o por la Junta Directiva.
 
 **Issue 2.1.3: Schema - Disponibilidad y Reservas OVPGES**
 
 - **Rol: Backend**
-- Crear `schemas/07_ovpg.sql`.
+- Crear `schemas/11_ovpg.sql` (los archivos `07` a `10` son del Open Day, Issues 1.5.2 a 1.5.5).
 - Tabla `availability_slots` (assignment_id, career_id, start_at, end_at, `capacity` por defecto 10, estado `open` / `full`, `meeting_url`) con restricción `EXCLUDE USING gist` para que un voluntario no solape sus propios bloques.
 - Tabla `ovpg_bookings` (slot_id, participant_id, `week_start`, estado, `meeting_url`) con `UNIQUE (participant_id, week_start) WHERE status <> 'cancelled'`: un participante no puede inscribirse a más de un bloque por semana.
 - RLS: los voluntarios solo insertan y editan sus propios bloques (vía `position_assignments`).
@@ -285,7 +357,7 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 **Issue 2.1.4: Vista SQL (View) para Disponibilidad Pública**
 
 - **Rol: Backend**
-- Crear `schemas/08_public_availability_view.sql`.
+- Crear `schemas/12_public_availability_view.sql`.
 - Crear una vista segura (`SECURE VIEW`) que agrupe los bloques por carrera y exponga solo los de estado `open`, con la cantidad de cupos libres, ocultando la identidad interna del voluntario.
 
 ### Épica 2: Frontend Intranet - Registro de Disponibilidad (Días 5-8)
@@ -324,7 +396,7 @@ Este sprint se centra en el módulo OVPGES (Orientaciones Virtuales Personalizad
 
 - **Rol: Backend / Frontend**
 - Desarrollar un modal animado (Framer Motion) que capture los datos del escolar (nombres, DNI, fecha de nacimiento, colegio, grado y correo) y lo verifique con un código OTP enviado al correo al momento de inscribirse. No se crea una cuenta permanente.
-- Implementar la función RPC `book_ovpg()` (`schemas/09_book_ovpg.sql`) que, en una sola transacción, bloquea el bloque (`FOR UPDATE`), valida el cupo, crea o reutiliza al `participant` y inserta la reserva. Cuando el cupo se completa, el bloque pasa a `full`.
+- Implementar la función RPC `book_ovpg()` (`schemas/13_book_ovpg.sql`) que, en una sola transacción, bloquea el bloque (`FOR UPDATE`), valida el cupo, crea o reutiliza al `participant` y inserta la reserva. Cuando el cupo se completa, el bloque pasa a `full`.
 - La función rechaza con un error claro: reservas duplicadas en la misma semana, bloques llenos y menores de 18 años sin `guardian_consents` vigente.
 
 **Issue 2.4.9: Autorización de Apoderado para Menores**
@@ -377,27 +449,26 @@ Este sprint aborda la automatización de los flujos de comunicación y reuniones
 - Construir una interfaz administrativa oculta en la intranet para invocar la API de envíos masivos.
 - Activar el envío masivo de correos de invitación para los usuarios externos que demostraron interés en los eventos públicos.
 
-### Épica 3: Inscripción al Open Day (Días 10-12)
+### Épica 3: Operación del Open Day (Días 10-12)
 
-El Open Day admite personas libres y colegios con varios alumnos. Se modela con `events`, `event_registrations` y `event_attendees` (ver [DATABASE.md](./DATABASE.md)).
+La inscripción (esquema, RPC, formularios y backoffice) se construye en la Épica 5 del Sprint 1. Este sprint cubre lo que ocurre alrededor del evento. Diseño en [DATABASE.md](./DATABASE.md), secciones 3.6 a 3.13.
 
-**Issue 3.3.1: Schema - Eventos e Inscripciones**
+**Issue 3.3.1: Recordatorios y comunicación**
 
-- **Rol: Backend**
-- Crear `schemas/10_events.sql` con `events`, `event_registrations` (`kind`: individual o colegio, contacto, `authorization_path`) y `event_attendees` (`event_id` desnormalizado y `UNIQUE (event_id, participant_id)`).
-- Función RPC `register_event()` que recibe la inscripción y la lista de alumnos y los inserta en una sola transacción, validando cupo del evento, fecha límite y autorización de menores.
-- RLS: la información de asistentes solo es visible para la Junta Directiva.
+- **Rol: Backend / Integraciones**
+- Recordatorios programados con `pg_cron` y la cola `email_outbox`: antes de vencer la reserva de 48 h y antes del evento.
+- Correos a las inscripciones afectadas cuando una sesión se cancela o cambia (`needs_reassignment`).
 
-**Issue 3.3.2: Formulario Público de Inscripción al Open Day**
-
-- **Rol: Frontend**
-- Crear la ruta `/open-day` con dos flujos: persona libre (OTP al correo) y colegio (responsable verificado con OTP).
-- El colegio carga la lista de alumnos con todos sus datos (nombres, DNI, fecha de nacimiento, grado) mediante formulario o CSV validado con Zod, y sube la autorización correspondiente.
-
-**Issue 3.3.3: Check-in y Reporte de Asistencia**
+**Issue 3.3.2: Check-in y reportes del día del evento**
 
 - **Rol: Frontend**
-- Vista en la intranet para marcar `checked_in_at` por asistente el día del evento y exportar la lista de inscritos por colegio.
+- Vista en la intranet para buscar por código o documento y marcar `checked_in_at` en el pase, avisando si la persona ya ingresó.
+- Exportaciones imprimibles: lista por puerta para seguridad de la UNI, lista por sesión para el guía de cada facultad y resumen de buses y estacionamiento.
+
+**Issue 3.3.3: Ajustes tras el primer uso real**
+
+- **Rol: Frontend / Backend**
+- Corregir fricciones detectadas en la inscripción (mensajes, plazos, validación de documentos) y casos de override del staff que se repitan.
 
 ### Épica 4: Feedback y Formularios Adicionales (Días 13-14)
 
@@ -448,7 +519,7 @@ Este sprint aborda las prioridades finales, aplica las mejoras sugeridas en el c
 - **Rol: DevOps**
 - Automatizar el flujo completo de un escolar seleccionando una carrera en el frontend, verificando el OTP, enviando el formulario, y comprobando que el backend registre la reserva y marque el bloque como `full` al completar el cupo.
 - Verificar que un segundo intento del mismo escolar en la misma semana sea rechazado.
-- Automatizar la inscripción al Open Day (persona libre y colegio con lista de alumnos).
+- Repasar el flujo de la inscripción al Open Day automatizado en la Issue 1.5.9 (persona libre y colegio), ya con los datos finales del evento.
 - Comprobar que la vista pública de carreras refleje la disponibilidad sin mostrar datos privados de los miembros.
 
 **Issue 4.3.5: Auditoría de Seguridad de Sesiones**
