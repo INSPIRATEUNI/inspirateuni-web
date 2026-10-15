@@ -42,7 +42,16 @@ El sistema de Orientaciones Virtuales Personalizadas Grupales para Escolares req
 
 Para las campañas de difusión (invitaciones a eventos), utilizamos Google Apps Scripts desplegado como una API interna. Esto nos permite sortear los límites diarios de envíos masivos (procesando los correos por tandas de hasta 1500) sin depender de servicios transaccionales de pago de terceros.
 
-## 6. Infraestructura y Despliegue (DevOps)
+## 6. Inscripción al Open Day
+
+La inscripción al Open Day reutiliza el mismo esquema de dos capas (Next.js + Supabase) y añade cuatro patrones. El diseño completo está en [DATABASE.md](./DATABASE.md), secciones 3.6 a 3.13.
+
+* **Cupos atómicos:** los recorridos se reservan con RPC `SECURITY DEFINER` que incrementan `seats_taken` solo si hay cupo. Las retenciones de 30 min y las reservas de 48 h vencen con `pg_cron` y de forma perezosa dentro de la propia RPC. Los dueños nunca escriben directo en las tablas.
+* **Disponibilidad con caché:** el navegador no consulta PostgREST en cada actualización. Un route handler de Next.js sirve la vista `v_tour_availability` con caché corto (≈5 s).
+* **Archivos en Drive:** la Edge Function solo crea una sesión de subida reanudable y verifica el resultado; el navegador sube el PDF directo a Google. El staff descarga a través de una Edge Function que comprueba su rol.
+* **Cola de correos (outbox):** cada correo se registra en `email_outbox` y un webhook dispara una Edge Function con reintentos e idempotencia. Apps Script genera el PDF de códigos con QR y lo adjunta. El OTP usa un SMTP propio, porque el integrado de Supabase tiene un límite muy bajo.
+
+## 7. Infraestructura y Despliegue (DevOps)
 
 Mantenemos la integridad del código mediante integraciones continuas. Las credenciales de producción son inyectadas exclusivamente como secretos en GitHub Actions.
 

@@ -63,7 +63,7 @@
     \entity{periods}{6.4}{0}{blue}{management_periods}{%
         \pk{id}\\ name\\ start_date, end_date\\ status (un solo activo)}
     \entity{roles}{12.8}{0}{blue}{organizational_roles}{%
-        \pk{id}\\ name\\ access_level (board / volunteer)\\ is_global (presidente, vice)}
+        \pk{id}\\ name\\ access_level (admin / board / volunteer)\\ is_global (admin, presidente, vice)}
 
     % ==========================================
     % Fila 1
@@ -99,7 +99,7 @@
     \entity{book}{12.8}{-17.5}{orange}{ovpg\_bookings}{%
         \pk{id}\\ \fk{slot_id}\\ \fk{participant_id}\\ week_start\\ status\\ \uq{(participant_id, week_start)}}
     \entity{part}{19.2}{-17.5}{gray}{participants}{%
-        \pk{id}\\ \fk{school_id}\\ \fk{profile_id} (nulo)\\ \uq{dni}, \uq{email}\\ first_name, last_name\\ birth_date, grade}
+        \pk{id}\\ \fk{school_id} (nulo)\\ \fk{profile_id} (nulo)\\ doc_type, doc_number\\ \uq{(doc_type, doc_number)}\\ \uq{email} (nulo)\\ first_name, last_name\\ birth_date, grade}
     \entity{guard}{25.6}{-17.5}{gray}{guardian\_consents}{%
         \pk{id}\\ \fk{participant_id}\\ guardian_name, guardian_dni\\ document_path\\ valid_until}
 
@@ -107,13 +107,27 @@
     % Fila 4
     % ==========================================
     \entity{events}{6.4}{-23.5}{purple}{events}{%
-        \pk{id}\\ name\\ event_date, venue\\ capacity\\ registration_deadline}
+        \pk{id}\\ name\\ event_date, venue\\ registration_closes_at\\ docs_close_at\\ hold_minutes, reservation_hours\\ max_file_mb (editable)\\ registration_open}
     \entity{reg}{12.8}{-23.5}{purple}{event\_registrations}{%
-        \pk{id}\\ \fk{event_id}\\ \fk{school_id} (nulo)\\ kind (individual / school)\\ contact_name, contact_email\\ authorization_path\\ status}
+        \pk{id}\\ \fk{event_id}\\ \fk{school_id} (nulo)\\ \fk{owner_id} (auth.users)\\ kind (individual / school)\\ status\\ reserved_at, docs_deadline\\ contact_name, contact_email\\ accepted_terms_at}
     \entity{att}{19.2}{-23.5}{purple}{event\_attendees}{%
-        \pk{id}\\ \fk{registration_id}\\ \fk{participant_id}\\ \fk{event_id} (desnormalizado)\\ checked_in_at\\ \uq{(event_id, participant_id)}}
+        \pk{id}\\ \fk{registration_id}\\ \fk{participant_id}\\ \fk{pass_id}\\ \fk{event_id} (desnormalizado)\\ attendee_role (visitor / chaperone / guardian)\\ relationship\\ \uq{(event_id, participant_id)} solo visitor}
     \entity{schools}{25.6}{-23.5}{gray}{schools}{%
         \pk{id}\\ name\\ district\\ type}
+
+    % ==========================================
+    % Fila 5: recorridos y pases del Open Day
+    % ==========================================
+    \entity{facs}{-6.4}{-29.5}{purple}{faculties}{%
+        \pk{id}\\ name\\ (catalogo compartido con OVPGES)}
+    \entity{efac}{0}{-29.5}{purple}{event\_faculties}{%
+        \pk{id}\\ \fk{event_id}\\ \fk{faculty_id}\\ tier (high / mid / low)}
+    \entity{tsess}{6.4}{-29.5}{purple}{tour\_sessions}{%
+        \pk{id}\\ \fk{event_faculty_id}\\ starts_at, ends_at\\ capacity, seats_taken\\ meeting_point\\ status (open / closed / cancelled)}
+    \entity{tenr}{12.8}{-29.5}{purple}{tour\_enrollments}{%
+        \pk{id}\\ \fk{registration_id}\\ \fk{session_id}\\ tier, time_range (copiados)\\ seats (= visitantes)\\ status (held / reserved / released)\\ hold_expires_at}
+    \entity{pass}{19.2}{-29.5}{purple}{event\_passes}{%
+        \pk{id}\\ \fk{event_id}\\ \fk{participant_id}\\ \uq{access_code}\\ status (active / revoked)\\ checked_in_at\\ \uq{(event_id, participant_id)}}
 
     % ==========================================
     % Relaciones (FK -> PK)
@@ -153,9 +167,21 @@
     \rel{(reg)}{(events)}{N}{1}
     \rel{(att)}{(reg)}{N}{1}
     \rel{(att)}{(part)}{N}{1}
-    \draw[fkline] (reg.south) -- ++(0,-1.8) -| (schools.south);
-    \node[card] at ($(reg.south)+(0.3,-0.6)$) {N};
-    \node[card] at ($(schools.south)+(0,-0.6)$) {0..1};
+    \draw[fkline] (reg.south east) -- ++(0,-1.0) -| (schools.south);
+    \node[card] at ($(reg.south east)+(0.3,-0.5)$) {N};
+    \node[card] at ($(schools.south)+(0,-0.5)$) {0..1};
+
+    % Recorridos y pases
+    \rel{(efac)}{(facs)}{N}{1}
+    \rel{(tsess)}{(efac)}{N}{1}
+    \rel{(tenr)}{(tsess)}{N}{1}
+    \rel{(efac.north east)}{(events.south west)}{N}{1}
+    \draw[fkline] (tenr.north west) -- (reg.south west) node[card, pos=0.14] {N} node[card, pos=0.62] {1};
+    \rel{(att.south)}{(pass.north)}{N}{1}
+    \rel{(pass.north west)}{(events.south east)}{N}{1}
+    \draw[fkline] (pass.east) -- (31.2,-29.5) -- (31.2,-14.6) -| (part.north);
+    \node[card] at ($(pass.east)+(0.5,0.35)$) {N};
+    \node[card] at ($(part.north)+(0,0.5)$) {1};
 
     % ==========================================
     % Leyenda
@@ -173,8 +199,8 @@
     \node[font=\scriptsize, anchor=west] at (l5.east) {\ Open Day};
     \node[mod, fill=boxyellow, draw=borderyellow, anchor=west] (l6) at ($(l5.west)+(0,-0.6)$) {};
     \node[font=\scriptsize, anchor=west] at (l6.east) {\ Convocatorias};
-    \node[font=\scriptsize, anchor=west, align=left] at ($(l6.west)+(0,-0.9)$)
-        {Flecha: clave foranea $\rightarrow$ tabla referenciada\\ Cardinalidad: N (hijo) a 1 o 0..1 (referenciada)\\ \textbf{PK} primaria, \textit{FK} foranea, \textit{UQ} unica};
+    \node[font=\scriptsize, anchor=north west, align=left] at ($(l6.south west)+(0,-0.3)$)
+        {Flecha: clave foranea $\rightarrow$ tabla referenciada\\ Cardinalidad: N (hijo) a 1 o 0..1 (referenciada)\\ \textbf{PK} primaria, \textit{FK} foranea, \textit{UQ} unica\\ No se dibujan las tablas de soporte del Open Day\\ (documentos, plantillas, bitacora, logistica, correos)};
 
 \end{tikzpicture}
 \end{document}
