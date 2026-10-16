@@ -1,0 +1,41 @@
+name: Backend
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+permissions:
+  contents: read
+
+# Cancela ejecuciones anteriores si se envían nuevos commits al mismo PR
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  test:
+    name: Pruebas unitarias de Base de Datos (pgTAP)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Instalar Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Arrancar instancia efímera de DB y aplicar migraciones
+        run: supabase start -x vector,realtime --ignore-health-check
+
+      - name: Ejecutar pruebas unitarias (pgTAP)
+        run: supabase test db
+
