@@ -1,7 +1,7 @@
 -- 🐧
 BEGIN;
 -- Le decimos a pgTAP cuántas pruebas vamos a ejecutar en este archivo
-SELECT plan(3);
+SELECT plan(4);
 
 -- 1. Verificamos que la tabla profiles existe
 SELECT has_table('public', 'profiles', 'La tabla profiles debe existir');
@@ -9,7 +9,10 @@ SELECT has_table('public', 'profiles', 'La tabla profiles debe existir');
 -- 2. Verificamos que la función del trigger existe
 SELECT has_function('public', 'handle_new_user', 'La función handle_new_user debe existir');
 
--- 3. Prueba de integración: Inserción en auth.users dispara el trigger
+-- 3. Verificamos que el trigger existe en auth.users
+SELECT has_trigger('auth', 'users', 'on_auth_user_created', 'El trigger on_auth_user_created debe existir en auth.users');
+
+-- 4. Prueba de integración: Inserción en auth.users dispara el trigger
 -- Insertamos el registro mínimo necesario en auth.users
 INSERT INTO auth.users (id, aud, role, email, raw_user_meta_data)
 VALUES (
