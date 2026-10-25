@@ -428,3 +428,113 @@ export function LogoBulbIcon({ className = "size-12", ...props }: IconProps) {
     </svg>
   );
 }
+
+/** Casa: inicio de la intranet */
+export function HomeIcon({ className = "size-5", ...props }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+      {...props}
+    >
+      <path
+        d="M4 11.5 12 4l8 7.5M6.5 10v9.5h11V10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Portapapeles: tareas */
+export function ClipboardIcon({ className = "size-5", ...props }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+      {...props}
+    >
+      <path
+        d="M9 4h6v3H9zM7 5.5H5.5v15h13v-15H17M9 12h6M9 16h4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Más: crear */
+export function PlusIcon({ className = "size-5", ...props }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+      {...props}
+    >
+      <path
+        d="M12 5v14M5 12h14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Visto bueno: revisión de entregas */
+export function CheckCircleIcon({ className = "size-5", ...props }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+      {...props}
+    >
+      <path
+        d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM8.5 12.3l2.4 2.4 4.6-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Salida: cerrar sesión */
+export function LogoutIcon({ className = "size-5", ...props }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+      {...props}
+    >
+      <path
+        d="M10 4.5H5.5v15H10M15 8l4 4-4 4M19 12H9.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
