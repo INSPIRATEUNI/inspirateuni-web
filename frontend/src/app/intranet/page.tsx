@@ -1,31 +1,34 @@
 import type { Metadata } from "next";
-import { Button } from "@/components/ui/Button";
+import { GradientText } from "@/components/ui/GradientText";
 import { Heading } from "@/components/ui/Heading";
+import { Tag } from "@/components/ui/Tag";
 import { Text } from "@/components/ui/Text";
-import { createClient } from "@/lib/supabase/server";
-import { signOut } from "./actions";
+import { formatRole, getCurrentUser } from "@/lib/intranet/user";
 
 export const metadata: Metadata = { title: "Intranet - Inspírate UNI" };
 
 export default async function IntranetPage() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  const email = data?.claims.email;
+  // Misma consulta que el layout: `getCurrentUser` está cacheado por petición.
+  const user = await getCurrentUser();
+  if (!user) return null;
 
   return (
-    <section className="pt-14 pb-24">
-      <div className="container-site flex max-w-md flex-col items-center text-center">
-        <Heading variant="page">Intranet</Heading>
-        <Text variant="lead" className="mt-4">
-          Sesión iniciada{email ? ` como ${email}` : ""}. Tus turnos, eventos y
-          horas llegarán pronto.
-        </Text>
-        <form action={signOut} className="mt-8">
-          <Button type="submit" variant="ghost">
-            Cerrar sesión
-          </Button>
-        </form>
+    <section>
+      <Heading variant="page">
+        Hola, <GradientText gradient="discover">{user.firstName}</GradientText>.
+      </Heading>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Tag tone="blue">{formatRole(user.primaryRole)}</Tag>
+        {user.roles.length > 1 && (
+          <Text variant="muted" className="text-sm">
+            También: {user.roles.slice(1).map(formatRole).join(", ")}
+          </Text>
+        )}
       </div>
+      <Text variant="lead" className="mt-6 max-w-2xl">
+        Aquí verás tus tareas, tus horas y, si eres de la directiva, las
+        entregas por revisar.
+      </Text>
     </section>
   );
 }
