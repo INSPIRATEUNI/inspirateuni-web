@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Nunito, Quicksand } from "next/font/google";
-import { Footer } from "@/components/site/Footer";
-import { NavBar } from "@/components/site/NavBar";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -38,11 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Saltar al contenido
         </a>
-        <NavBar />
-        <main id="contenido" className="flex-1">
-          {children}
-        </main>
-        <Footer />
+        {children}
       </body>
     </html>
   );
