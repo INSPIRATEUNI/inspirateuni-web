@@ -4,7 +4,19 @@ import { Heading } from "@/components/ui/Heading";
 import { Text } from "@/components/ui/Text";
 import { LoginForm } from "./LoginForm";
 
-export default function LoginPage() {
+const DEFAULT_REDIRECT = "/intranet";
+
+/** Solo acepta rutas internas bajo /intranet para evitar redirecciones abiertas. */
+function safeRedirect(next: string | string[] | undefined) {
+  const value = Array.isArray(next) ? next[0] : next;
+  if (!value) return DEFAULT_REDIRECT;
+  const isIntranet = value === "/intranet" || value.startsWith("/intranet/");
+  return isIntranet && !value.startsWith("//") ? value : DEFAULT_REDIRECT;
+}
+
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const { next } = await searchParams;
+
   return (
     <section className="pt-14 pb-24">
       <div className="container-site flex max-w-md flex-col items-center text-center">
@@ -17,7 +29,7 @@ export default function LoginPage() {
         </Text>
 
         <div className="mt-10 w-full">
-          <LoginForm />
+          <LoginForm redirectTo={safeRedirect(next)} />
         </div>
 
         <Text variant="muted" className="mt-8 text-sm">
