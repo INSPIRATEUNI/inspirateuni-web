@@ -7,6 +7,7 @@ export type UserRole = {
   name: string;
   accessLevel: AccessLevel;
   isGlobal: boolean;
+  areaId: string | null;
   areaName: string | null;
 };
 
@@ -21,6 +22,8 @@ export type CurrentUser = {
   primaryRole: UserRole | null;
   accessLevel: AccessLevel;
   isBoard: boolean;
+  /** Administrador, presidente y vice: gestionan tareas de todas las áreas. */
+  canManageAllAreas: boolean;
 };
 
 type ProfileRow = { first_name: string | null; last_name: string | null };
@@ -31,7 +34,7 @@ type AssignmentRow = {
     access_level: AccessLevel;
     is_global: boolean;
   } | null;
-  area: { name: string } | null;
+  area: { id: string; name: string } | null;
 };
 
 const ACCESS_RANK: Record<AccessLevel, number> = {
@@ -60,7 +63,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     supabase
       .from("position_assignments")
       .select(
-        "role:organizational_roles(name, access_level, is_global), area:areas(name), period:management_periods!inner(status)",
+        "role:organizational_roles(name, access_level, is_global), area:areas(id, name), period:management_periods!inner(status)",
       )
       .eq("profile_id", claims.sub)
       .eq("status", "active")
@@ -78,6 +81,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
         name: row.role?.name ?? "",
         accessLevel: row.role?.access_level ?? "volunteer",
         isGlobal: row.role?.is_global ?? false,
+        areaId: row.area?.id ?? null,
         areaName: row.area?.name ?? null,
       }),
     )
@@ -103,11 +107,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     primaryRole,
     accessLevel,
     isBoard: accessLevel === "admin" || accessLevel === "board",
+    canManageAllAreas: roles.some(
+      (role) => role.isGlobal || role.accessLevel === "admin",
+    ),
   };
 });
 
-/** Texto del cargo para mostrar: "Director · Área", o un respaldo sin cargo. */
+/** Texto del cargo para mostrar: "Director - Área", o un respaldo sin cargo. */
 export function formatRole(role: UserRole | null) {
   if (!role) return "Sin cargo asignado";
-  return role.areaName ? `${role.name} · ${role.areaName}` : role.name;
+  return role.areaName ? `${role.name} - ${role.areaName}` : role.name;
 }
