@@ -1,37 +1,25 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
-import { Mascot } from "@/components/site/Mascot";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
-import { GradientText } from "@/components/ui/GradientText";
-import { Heading } from "@/components/ui/Heading";
-import { Text } from "@/components/ui/Text";
+import { createClient } from "@/lib/supabase/client";
 
-type Status = "idle" | "loading" | "success";
-type Errors = { email?: string; password?: string };
+type Status = "idle" | "loading";
+type Errors = { email?: string; password?: string; form?: string };
 
-const FAKE_LATENCY_MS = 900;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function firstNameFrom(email: string) {
-  const [local = ""] = email.split("@");
-  const [name = ""] = local.split(/[._-]/);
-  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-}
-
-export function LoginForm() {
+export function LoginForm({ redirectTo }: { redirectTo: string }) {
+  const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [errors, setErrors] = useState<Errors>({});
   const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState("");
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (status === "loading") return;
 
@@ -50,45 +38,24 @@ export function LoginForm() {
     if (next.password) return passwordRef.current?.focus();
 
     setStatus("loading");
-    timer.current = setTimeout(() => {
-      setName(firstNameFrom(email));
-      setStatus("success");
-    }, FAKE_LATENCY_MS);
-  }
+    const { error } = await createClient().auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (status === "success") {
-    return (
-      <div
-        role="status"
-        className="flex flex-col items-center gap-6 text-center"
-      >
-        <Mascot
-          pose="alegre"
-          className="w-28 animate-mascot-float motion-reduce:animate-none"
-        />
-        <div>
-          <Heading variant="section" level={3}>
-            ¡Qué bueno verte,{" "}
-            <GradientText gradient="fresh">{name || "voluntario"}</GradientText>
-            !
-          </Heading>
-          <Text variant="lead" className="mt-3">
-            Entraste en modo de prueba. La intranet con tus turnos, eventos y
-            visitas llegará pronto.
-          </Text>
-          <Button
-            variant="ghost"
-            className="mt-6"
-            onClick={() => {
-              setStatus("idle");
-              setShowPassword(false);
-            }}
-          >
-            Cerrar sesión de prueba
-          </Button>
-        </div>
-      </div>
-    );
+    if (error) {
+      setStatus("idle");
+      setErrors({
+        form:
+          error.code === "invalid_credentials"
+            ? "Correo o contraseña incorrectos."
+            : "No pudimos iniciar tu sesión. Inténtalo de nuevo en un momento.",
+      });
+      return;
+    }
+
+    router.replace(redirectTo);
+    router.refresh();
   }
 
   const loading = status === "loading";
@@ -143,6 +110,10 @@ export function LoginForm() {
         )}
       </Field>
 
+      {errors.form && (
+        <FieldError id="login-form-error" message={errors.form} />
+      )}
+
       <Button
         type="submit"
         bolt={!loading}
@@ -152,9 +123,6 @@ export function LoginForm() {
       >
         {loading ? "Ingresando…" : "Ingresar"}
       </Button>
-      <p className="text-center text-sm text-muted-foreground">
-        Prototipo: cualquier correo y contraseña válidos te dejan entrar.
-      </p>
     </form>
   );
 }

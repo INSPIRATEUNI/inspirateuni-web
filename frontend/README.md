@@ -20,6 +20,17 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Configuración de Supabase
+
+Copia `.env.example` a `.env.local` y completa los valores (en local salen de `npx supabase status`, ejecutado en la raíz del repo):
+
+| Variable                               | Descripción                                        |
+| -------------------------------------- | -------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | URL del proyecto (local: `http://127.0.0.1:54321`) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave publicable (`anon`) del proyecto             |
+
+La sesión se guarda en cookies mediante `@supabase/ssr`. El proxy (`src/proxy.ts`) refresca la sesión y redirige a `/login` cuando no hay sesión en `/intranet/*`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
