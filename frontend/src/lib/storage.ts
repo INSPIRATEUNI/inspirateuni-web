@@ -46,3 +46,12 @@ export async function removeEvidence(paths: string[]) {
   if (paths.length === 0) return;
   await createClient().storage.from(EVIDENCE_BUCKET).remove(paths);
 }
+
+/** URL firmada de corta duración para abrir una evidencia (por ejemplo, un director al revisar). */
+export async function getEvidenceUrl(path: string) {
+  const { data, error } = await createClient()
+    .storage.from(EVIDENCE_BUCKET)
+    .createSignedUrl(path, 60);
+  if (error || !data) throw new Error("No pudimos abrir el archivo.");
+  return data.signedUrl;
+}
