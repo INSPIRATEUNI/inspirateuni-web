@@ -92,6 +92,7 @@ Cada relación se lee de la tabla con la FK (N) hacia la tabla referenciada. `0.
 | `availability_slots` → `position_assignments` | N : 1 | Un voluntario publica varios bloques |
 | `ovpg_bookings` → `availability_slots` | N : 1 | Un bloque admite hasta `capacity` reservas |
 | `ovpg_bookings` → `participants` | N : 1 | Un participante reserva varias veces, pero una por semana |
+| `careers` → `faculties` | N : 1 | Una facultad tiene varias carreras |
 | `participants` → `schools` | N : 0..1 | Los externos individuales pueden no tener colegio |
 | `guardian_consents` → `participants` | N : 1 | Un menor puede tener varias autorizaciones (vencidas y vigente) |
 | `event_registrations` → `events` | N : 1 | Un evento tiene varias inscripciones |
@@ -118,7 +119,7 @@ Cada relación se lee de la tabla con la FK (N) hacia la tabla referenciada. `0.
 | Núcleo | `profiles`, `programs`, `areas`, `management_periods`, `organizational_roles`, `position_assignments` | Personas, cargos por período y área |
 | Tareas y horas | `activity_types`, `tasks`, `task_assignments`, `task_submissions`, `submission_evidences` | Asignar tareas, reportar horas con evidencia y revisión de directores |
 | OVPGES | `availability_slots`, `ovpg_bookings` | Disponibilidad de voluntarios e inscripción grupal de escolares |
-| Catálogo | `faculties` (y `careers`, ver plan) | Facultades y carreras; lo comparten OVPGES y Open Day |
+| Catálogo | `faculties`, `careers` | Facultades y carreras; lo comparten OVPGES y Open Day |
 | Open Day | `events`, `event_faculties`, `tour_sessions`, `event_registrations`, `tour_enrollments`, `event_attendees`, `event_passes` | Recorridos por facultad con cupos, inscripción individual y por colegio, y pase con código por persona |
 | Open Day (soporte) | `registration_documents`, `document_templates`, `registration_events`, `logistics_options`, `registration_logistics`, `email_outbox` | Documentos en Drive, plantillas, bitácora, logística extensible y cola de correos |
 | Participantes | `participants`, `schools`, `guardian_consents` | Escolares y externos (sin cuenta), con autorización de apoderado |
@@ -282,7 +283,7 @@ Todo vive en columnas de `events` y se edita desde el backoffice (solo `admin`),
 - **Un período activo:** índice único parcial sobre `management_periods` con `state = 'active'`.
 - **Estados** como enums de Postgres, no texto libre.
 - **Flujo de entrega:** `assigned → submitted → approved | rejected` (con `reviewed_by` y `reviewed_at`).
-- **Sin solapes:** `EXCLUDE USING gist` sobre el rango de cada voluntario en `availability_slots` y sobre los recorridos de cada inscripción en `tour_enrollments`. Requiere la extensión `btree_gist`, que aún no está en `schemas/00_extension.sql`.
+- **Sin solapes:** `EXCLUDE USING gist` sobre el rango de cada voluntario en `availability_slots` y sobre los recorridos de cada inscripción en `tour_enrollments`. Requiere la extensión `btree_gist`, ya añadida a `schemas/00_extension.sql` junto con `pg_cron`.
 - **Una inscripción de colegio por evento:** índice único parcial sobre `(event_id, school_id)` donde `school_id` no es nulo y el estado no es `expired` ni `cancelled`.
 - **Cupos:** `seats_taken` se actualiza solo desde las RPC y por triggers; `CHECK (seats_taken <= capacity)`.
 - **Zona horaria:** todas las fechas son `timestamptz`; la presentación y el cálculo de semanas usan `America/Lima`.
