@@ -223,7 +223,24 @@ draft → held → reserved → submitted → confirmed
 - **Vencimiento automático:** solo antes de enviar (`draft`, `held`, `reserved`). Una inscripción `submitted` o posterior nunca se libera sola: solo la cancela el staff.
 - **Overrides (solo `admin`):** reabrir, editar la lista de personas, superar topes o cupos y cancelar. Todos exigen un motivo y quedan en `registration_events` (quién, cuándo, de qué estado a cuál). Si cambia la lista, los pases de quienes salen pasan a `revoked`, se emiten los nuevos y se reenvía el PDF de códigos. La interfaz pública no menciona estas opciones; el colegio llama al staff por iniciativa propia.
 - **Revisión (`board`):** valida o observa documentos, confirma y asigna puerta y hora de llegada, y exporta listas.
-- **Anti-acaparamiento:** captcha en OTP y reserva, máximo de borradores activos por correo y tope de visitantes por inscripción. No hay lista de espera.
+- **Anti-acaparamiento:** captcha en OTP y reserva, máximo de borradores activos por correo (`events.max_drafts_per_email`) y tope de visitantes por inscripción. No hay lista de espera.
+
+**RPC (`schemas/09_openday_rpc.sql`).** Todas son `SECURITY DEFINER` con `search_path` fijo y verifican `auth.uid()`. Los errores de negocio usan `P0001` con un código estable en `HINT` (`no_capacity`, `tier_taken`, `overlap`, `levels_incomplete`, `docs_missing`, `forbidden`...).
+
+| Quién | Función | Qué hace |
+|---|---|---|
+| Dueño | `start_registration` | Crea el `draft` (evento abierto, tope por correo, un colegio por evento) |
+| Dueño | `hold_tour`, `release_tour` | Retiene o suelta un recorrido; liberación perezosa de retenciones vencidas; un solo temporizador por inscripción |
+| Dueño | `renew_hold` | Renueva el temporizador una sola vez |
+| Dueño | `confirm_selection` | Regla de niveles maximal; bloquea la selección y pasa a `reserved` |
+| Dueño | `set_attendees` | Reemplaza la lista de personas en una transacción (solo en `reserved`) |
+| Dueño | `submit_registration`, `resubmit_registration` | Valida personas, proporción de acompañantes, topes y documentos; reenvía tras una observación |
+| `board` | `confirm_registration` | Valida documentos, fija puerta y hora de llegada y emite los pases |
+| `board` | `observe_documents` | Observa con motivo y fija el plazo de reemplazo |
+| `admin` | `admin_reopen_registration`, `admin_set_attendees`, `admin_override_limits`, `admin_cancel_registration` | Overrides: exigen motivo y quedan en `registration_events` |
+
+- **Jobs de `pg_cron`** (programados en la migración `schedule_openday_jobs`): cada minuto `job_expire_holds` (retenciones vencidas, reservas pasadas de plazo y borradores abandonados tras `reservation_hours`), cada 5 min `job_check_seats` (compara `seats_taken` con la suma real, avisa con `WARNING` y corrige) y cada 15 min `job_enqueue_reminders` (12 h antes de vencer la reserva y el día antes del evento).
+- **Sesión cancelada:** un trigger libera sus recorridos y deja las inscripciones afectadas en `needs_reassignment` con correo. Para elegir otra sesión no rige la ventana de inscripción, y al confirmar la nueva selección el plazo se recalcula sin el tope de `docs_close_at`. La inscripción vuelve a `reserved` y debe enviarse otra vez.
 
 ### 3.9 Documentos y Google Drive
 - **Los PDFs van a Google Drive**, no a Supabase Storage, con el mismo patrón que las evidencias de horas: Edge Function con cuenta de servicio y `drive_file_id` en la BD. Esto reemplaza la decisión anterior de Storage para las autorizaciones de menores del Open Day.
@@ -259,6 +276,7 @@ Todo vive en columnas de `events` y se edita desde el backoffice (solo `admin`),
 | `max_file_mb` | 20 (hasta 50) | Tamaño máximo por archivo |
 | `students_per_chaperone` | 10 | Proporción mínima de acompañantes |
 | `max_visitors_per_registration`, `max_adults_per_registration` | por definir | Topes por inscripción de colegio |
+| `max_drafts_per_email` | 3 | Inscripciones en curso (`draft`, `held`, `reserved`) por correo de contacto y evento |
 | `travel_buffer_minutes` | 15 | Margen entre recorridos para evitar cruces |
 | `registration_open` | `true` | Interruptor general para cerrar todo de inmediato |
 
