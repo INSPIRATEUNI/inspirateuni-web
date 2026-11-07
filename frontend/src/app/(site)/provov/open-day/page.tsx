@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { ImageSlot } from "@/components/gallery/ImageSlot";
 import { Breadcrumb } from "@/components/programs/Breadcrumb";
@@ -10,7 +11,6 @@ import {
   UsersIcon,
 } from "@/components/site/Icons";
 import { Mascot } from "@/components/site/Mascot";
-import { contact } from "@/components/site/navigation";
 import { buttonClasses } from "@/components/ui/Button";
 import { GradientText } from "@/components/ui/GradientText";
 import { Heading } from "@/components/ui/Heading";
@@ -107,13 +107,21 @@ export default function OpenDayPage() {
                 </div>
               ))}
             </dl>
-            <a
-              href={`mailto:${contact.email}?subject=Quiero ir al Open Day UNI 2026`}
-              className={buttonClasses({ className: "mt-8" })}
-            >
-              Avísame cuando abra la inscripción
-              <BoltIcon />
-            </a>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                href="/provov/open-day/inscripcion"
+                className={buttonClasses()}
+              >
+                Inscríbete
+                <BoltIcon />
+              </Link>
+              <Link
+                href="/provov/open-day/inscripcion/mi-inscripcion"
+                className={buttonClasses({ variant: "ghost" })}
+              >
+                Mi inscripción
+              </Link>
+            </div>
           </div>
 
           <div className="relative pb-12">

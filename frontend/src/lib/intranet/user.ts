@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { isIntranetSession } from "@/lib/supabase/session";
 
 export type AccessLevel = "admin" | "board" | "volunteer";
 
@@ -52,7 +53,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
-  if (!claims?.sub) return null;
+  // Las sesiones OTP del Open Day no son usuarios de la intranet
+  if (!claims?.sub || !isIntranetSession(claims)) return null;
 
   const [profileResult, assignmentsResult] = await Promise.all([
     supabase
