@@ -99,9 +99,9 @@
     \entity{book}{12.8}{-17.5}{orange}{ovpg\_bookings}{%
         \pk{id}\\ \fk{slot_id}\\ \fk{participant_id}\\ week_start\\ status\\ \uq{(participant_id, week_start)}}
     \entity{part}{19.2}{-17.5}{gray}{participants}{%
-        \pk{id}\\ \fk{school_id} (nulo)\\ \fk{profile_id} (nulo)\\ doc_type, doc_number\\ \uq{(doc_type, doc_number)}\\ \uq{email} (nulo)\\ first_name, last_name\\ birth_date, grade}
+        \pk{id}\\ \fk{school_id} (nulo)\\ doc_type, doc_number\\ \uq{(doc_type, doc_number)}\\ \uq{email} (nulo)\\ first_name, last_name\\ birth_date (obligatorio), grade\\ phone}
     \entity{guard}{25.6}{-17.5}{gray}{guardian\_consents}{%
-        \pk{id}\\ \fk{participant_id}\\ guardian_name, guardian_dni\\ document_path\\ valid_until}
+        \pk{id}\\ \fk{participant_id}\\ guardian_name, guardian_dni\\ guardian_contact\\ document_path\\ accepted_at, valid_until}
 
     % ==========================================
     % Fila 4
@@ -113,13 +113,15 @@
     \entity{att}{19.2}{-23.5}{purple}{event\_attendees}{%
         \pk{id}\\ \fk{registration_id}\\ \fk{participant_id}\\ \fk{pass_id}\\ \fk{event_id} (desnormalizado)\\ attendee_role (visitor / chaperone / guardian)\\ relationship\\ \uq{(event_id, participant_id)} solo visitor}
     \entity{schools}{25.6}{-23.5}{gray}{schools}{%
-        \pk{id}\\ name\\ district\\ type}
+        \pk{id}\\ \uq{name}\\ district, ugel\\ contact_email}
 
     % ==========================================
     % Fila 5: recorridos y pases del Open Day
     % ==========================================
     \entity{facs}{-6.4}{-29.5}{purple}{faculties}{%
-        \pk{id}\\ name\\ (catalogo compartido con OVPGES)}
+        \pk{id}\\ \uq{name}\\ (catalogo compartido con OVPGES)}
+    \entity{careers}{-12.8}{-29.5}{purple}{careers}{%
+        \pk{id}\\ \fk{faculty_id}\\ name\\ \uq{(faculty_id, name)}}
     \entity{efac}{0}{-29.5}{purple}{event\_faculties}{%
         \pk{id}\\ \fk{event_id}\\ \fk{faculty_id}\\ tier (high / mid / low)}
     \entity{tsess}{6.4}{-29.5}{purple}{tour\_sessions}{%
@@ -173,6 +175,7 @@
 
     % Recorridos y pases
     \rel{(efac)}{(facs)}{N}{1}
+    \rel{(careers)}{(facs)}{N}{1}
     \rel{(tsess)}{(efac)}{N}{1}
     \rel{(tenr)}{(tsess)}{N}{1}
     \rel{(efac.north east)}{(events.south west)}{N}{1}
