@@ -234,6 +234,11 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
+# SMTP propio para el OTP (el integrado de Supabase tiene un límite muy bajo). En producción se
+# configura en el Dashboard (Authentication > SMTP) o aquí con las variables SMTP_*; local usa
+# el servidor de correo local (puerto 54324). Se deja comentado para no depender de secretos en el
+# CI ni en local. Al activarlo en producción, subir también [auth.rate_limit] email_sent (el valor
+# de abajo es el de desarrollo) y revisar el captcha.
 # Use a production-ready SMTP server
 # [auth.email.smtp]
 # enabled = true
@@ -385,6 +390,17 @@ deno_version = 2
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
+
+# Edge Functions del Open Day (Issue 1.5.6). Variables de entorno: functions/README.md.
+[functions.drive-upload]
+enabled = true
+verify_jwt = true # el usuario entra con su sesión (OTP); la función además comprueba dueño o rol
+entrypoint = "./functions/drive-upload/index.ts"
+
+[functions.send-email]
+enabled = true
+verify_jwt = false # la llama el webhook de la BD (pg_net); se autentica con x-webhook-secret
+entrypoint = "./functions/send-email/index.ts"
 
 [analytics]
 enabled = true
