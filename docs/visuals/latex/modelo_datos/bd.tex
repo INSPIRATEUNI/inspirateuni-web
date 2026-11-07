@@ -107,7 +107,7 @@
     % Fila 4
     % ==========================================
     \entity{events}{6.4}{-23.5}{purple}{events}{%
-        \pk{id}\\ name\\ event_date, venue\\ registration_closes_at\\ docs_close_at\\ hold_minutes, reservation_hours\\ max_file_mb (editable)\\ registration_open}
+        \pk{id}\\ name\\ event_date, venue\\ registration_opens_at, registration_closes_at\\ docs_close_at\\ hold_minutes, reservation_hours\\ max_file_mb (editable)\\ students_per_chaperone\\ max_visitors/adults_per_registration\\ travel_buffer_minutes\\ registration_open}
     \entity{reg}{12.8}{-23.5}{purple}{event\_registrations}{%
         \pk{id}\\ \fk{event_id}\\ \fk{school_id} (nulo)\\ \fk{owner_id} (auth.users)\\ kind (individual / school)\\ status\\ reserved_at, docs_deadline\\ contact_name, contact_email\\ accepted_terms_at}
     \entity{att}{19.2}{-23.5}{purple}{event\_attendees}{%
@@ -123,9 +123,9 @@
     \entity{careers}{-12.8}{-29.5}{purple}{careers}{%
         \pk{id}\\ \fk{faculty_id}\\ name\\ \uq{(faculty_id, name)}}
     \entity{efac}{0}{-29.5}{purple}{event\_faculties}{%
-        \pk{id}\\ \fk{event_id}\\ \fk{faculty_id}\\ tier (high / mid / low)}
+        \pk{id}\\ \fk{event_id}\\ \fk{faculty_id}\\ tier (high / mid / low)\\ \uq{(event_id, faculty_id)}}
     \entity{tsess}{6.4}{-29.5}{purple}{tour\_sessions}{%
-        \pk{id}\\ \fk{event_faculty_id}\\ starts_at, ends_at\\ capacity, seats_taken\\ meeting_point\\ status (open / closed / cancelled)}
+        \pk{id}\\ \fk{event_faculty_id}\\ starts_at, ends_at\\ capacity, seats_taken\\ meeting_point\\ status (open / closed / cancelled)\\ \uq{(event_faculty_id, starts_at)}}
     \entity{tenr}{12.8}{-29.5}{purple}{tour\_enrollments}{%
         \pk{id}\\ \fk{registration_id}\\ \fk{session_id}\\ tier, time_range (copiados)\\ seats (= visitantes)\\ status (held / reserved / released)\\ hold_expires_at}
     \entity{pass}{19.2}{-29.5}{purple}{event\_passes}{%

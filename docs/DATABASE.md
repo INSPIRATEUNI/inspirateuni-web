@@ -185,7 +185,7 @@ El Open Day dura **un solo día**. Cada facultad ofrece un recorrido de 1 a 2 ho
 
 ### 3.7 Recorridos, niveles y cupos
 - `faculties` es el catálogo compartido con OVPGES. `event_faculties(event_id, faculty_id, tier)` incluye una facultad en un evento con su nivel de demanda: `high` (muy visitadas), `mid` (intermedias) o `low` (poco visitadas). El nivel está en el evento y no en la facultad porque cambia de un año a otro.
-- `tour_sessions(event_faculty_id, starts_at, ends_at, capacity, seats_taken, meeting_point, status)`: cada repetición del recorrido. El staff las carga por CSV con la RPC `import_tour_sessions()`: idempotente (clave: facultad + inicio) y con una vista previa de los cambios antes de aplicar. Estados: `open`, `closed`, `cancelled`.
+- `tour_sessions(event_faculty_id, starts_at, ends_at, capacity, seats_taken, meeting_point, status)`: cada repetición del recorrido. El staff las carga por CSV con la RPC `import_tour_sessions(event_id, csv, apply)` (solo `board`): columnas `facultad,inicio,fin,cupo,punto_encuentro`, separador coma o punto y coma, horas en `America/Lima`. Es idempotente (clave `UNIQUE (event_faculty_id, starts_at)`) y con `apply = false` devuelve la vista previa por fila (`insert`, `update`, `unchanged` o `error`). Con `apply = true` aplica todo o nada: si hay errores no cambia nada. No borra las sesiones que faltan en el CSV. Estados: `open`, `closed`, `cancelled`.
 - `tour_enrollments(registration_id, session_id, tier, time_range, seats, status, hold_expires_at)`: lo que reservó una inscripción. `tier` y `time_range` se copian de la sesión (trigger) para poder imponer las reglas con restricciones. `seats` es la cantidad de visitantes. Estados: `held`, `reserved`, `released`.
 - **Reservar** es la RPC `hold_tour()`: `UPDATE tour_sessions SET seats_taken = seats_taken + n WHERE id = $1 AND seats_taken + n <= capacity`; si no actualiza ninguna fila, no hay cupo. Atómico y sin bloqueos largos. `CHECK (seats_taken <= capacity)` es la última defensa. Los contadores se mantienen por triggers y una verificación periódica compara `seats_taken` con la suma real.
 - **Retención vencida:** la RPC libera de forma perezosa las retenciones vencidas de la sesión antes de reservar, y un job de `pg_cron` (cada minuto) libera el resto.
@@ -260,6 +260,7 @@ Todo vive en columnas de `events` y se edita desde el backoffice (solo `admin`),
 | `students_per_chaperone` | 10 | Proporción mínima de acompañantes |
 | `max_visitors_per_registration`, `max_adults_per_registration` | por definir | Topes por inscripción de colegio |
 | `travel_buffer_minutes` | 15 | Margen entre recorridos para evitar cruces |
+| `registration_open` | `false` | Interruptor manual para abrir o cerrar la inscripción |
 | `registration_open` | `true` | Interruptor general para cerrar todo de inmediato |
 
 ### 3.12 Logística extensible
