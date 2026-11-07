@@ -7,7 +7,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Excluye estáticos, optimización de imágenes y archivos de public/
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|ico)$).*)",
+    // Excluye estáticos, optimización de imágenes, archivos de public/ y la
+    // disponibilidad del Open Day (pública y cacheable: no debe tocar cookies)
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|api/open-day/disponibilidad|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|ico)$).*)",
   ],
 };

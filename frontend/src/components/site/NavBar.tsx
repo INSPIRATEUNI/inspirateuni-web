@@ -96,7 +96,7 @@ export function NavBar() {
   ));
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/88 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b print:hidden border-border/70 bg-background/88 backdrop-blur-md">
       <div className="container-site flex h-(--header-h) items-center justify-between gap-6">
         <Link href="/" className="group inline-flex shrink-0 items-center">
           <Image
