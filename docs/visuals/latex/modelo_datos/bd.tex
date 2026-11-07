@@ -107,7 +107,7 @@
     % Fila 4
     % ==========================================
     \entity{events}{6.4}{-23.5}{purple}{events}{%
-        \pk{id}\\ name\\ event_date, venue\\ registration_opens_at, registration_closes_at\\ docs_close_at\\ hold_minutes, reservation_hours\\ max_file_mb (editable)\\ students_per_chaperone\\ max_visitors/adults_per_registration\\ travel_buffer_minutes\\ registration_open}
+        \pk{id}\\ name\\ event_date, venue\\ registration_opens_at, registration_closes_at\\ docs_close_at\\ hold_minutes, reservation_hours\\ max_file_mb (editable)\\ students_per_chaperone\\ max_visitors/adults_per_registration\\ max_drafts_per_email\\ travel_buffer_minutes\\ registration_open}
     \entity{reg}{12.8}{-23.5}{purple}{event\_registrations}{%
         \pk{id}\\ \fk{event_id}\\ \fk{school_id} (nulo)\\ \fk{owner_id} (auth.users)\\ \uq{reference_code}\\ kind (individual / school)\\ status\\ expected_visitors\\ reserved_at, docs_deadline\\ submitted_at, confirmed_at\\ gate, arrival_at\\ contact_name, contact_email\\ accepted_terms_at, terms_version}
     \entity{att}{19.2}{-23.5}{purple}{event\_attendees}{%
