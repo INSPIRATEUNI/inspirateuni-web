@@ -406,7 +406,7 @@ SELECT is((SELECT count(*)::int FROM public.check_seats_taken(false) WHERE sessi
 SELECT public.job_check_seats();
 SELECT is((SELECT seats_taken FROM public.tour_sessions WHERE id = '50000000-0000-0000-0000-000000000002'), 0, 'El job corrige el descuadre');
 
-SELECT is((SELECT count(*)::int FROM cron.job WHERE jobname LIKE 'openday-%'), 3, 'Los 3 jobs de pg_cron están programados');
+SELECT is((SELECT count(*)::int FROM cron.job WHERE jobname LIKE 'openday-%'), 4, 'Los 4 jobs de pg_cron están programados');
 
 SELECT * FROM finish();
 ROLLBACK;

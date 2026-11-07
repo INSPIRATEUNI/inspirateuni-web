@@ -4,3 +4,4 @@
 select cron.schedule('openday-expire-holds', '* * * * *', 'select public.job_expire_holds()');
 select cron.schedule('openday-check-seats', '*/5 * * * *', 'select public.job_check_seats()');
 select cron.schedule('openday-reminders', '*/15 * * * *', 'select public.job_enqueue_reminders()');
+select cron.schedule('openday-process-emails', '* * * * *', 'select public.job_process_email_outbox()');
