@@ -187,7 +187,7 @@ El Open Day dura **un solo día**. Cada facultad ofrece un recorrido de 1 a 2 ho
 - `faculties` es el catálogo compartido con OVPGES. `event_faculties(event_id, faculty_id, tier)` incluye una facultad en un evento con su nivel de demanda: `high` (muy visitadas), `mid` (intermedias) o `low` (poco visitadas). El nivel está en el evento y no en la facultad porque cambia de un año a otro.
 - `tour_sessions(event_faculty_id, starts_at, ends_at, capacity, seats_taken, meeting_point, status)`: cada repetición del recorrido. El staff las carga por CSV con la RPC `import_tour_sessions(event_id, csv, apply)` (solo `board`): columnas `facultad,inicio,fin,cupo,punto_encuentro`, separador coma o punto y coma, horas en `America/Lima`. Es idempotente (clave `UNIQUE (event_faculty_id, starts_at)`) y con `apply = false` devuelve la vista previa por fila (`insert`, `update`, `unchanged` o `error`). Con `apply = true` aplica todo o nada: si hay errores no cambia nada. No borra las sesiones que faltan en el CSV. Estados: `open`, `closed`, `cancelled`.
 - `tour_enrollments(registration_id, session_id, tier, time_range, seats, status, hold_expires_at)`: lo que reservó una inscripción. `tier` y `time_range` se copian de la sesión (trigger) para poder imponer las reglas con restricciones. `seats` es la cantidad de visitantes. Estados: `held`, `reserved`, `released`.
-- **Reservar** es la RPC `hold_tour()`: `UPDATE tour_sessions SET seats_taken = seats_taken + n WHERE id = $1 AND seats_taken + n <= capacity`; si no actualiza ninguna fila, no hay cupo. Atómico y sin bloqueos largos. `CHECK (seats_taken <= capacity)` es la última defensa. Los contadores se mantienen por triggers y una verificación periódica compara `seats_taken` con la suma real.
+- **Reservar** es la RPC `hold_tour()`, que inserta el `tour_enrollments`. Un trigger suma `seats` a `tour_sessions.seats_taken` con un `UPDATE` que bloquea la fila de la sesión, y `CHECK (seats_taken <= capacity)` rechaza el exceso (`check_violation`): atómico y sin bloqueos largos. La RPC solo traduce ese error a "sin cupo"; **no** modifica `seats_taken` por su cuenta, para no contar dos veces. El trigger también devuelve los asientos al pasar a `released` o al borrar. Una verificación periódica compara `seats_taken` con la suma real de los recorridos no liberados.
 - **Retención vencida:** la RPC libera de forma perezosa las retenciones vencidas de la sesión antes de reservar, y un job de `pg_cron` (cada minuto) libera el resto.
 - **Un recorrido por nivel:** `UNIQUE (registration_id, tier) WHERE status <> 'released'`. De ahí sale el máximo de 3.
 - **Sin cruces:** `EXCLUDE USING gist (registration_id WITH =, time_range WITH &&) WHERE status <> 'released'`. `time_range` incluye un margen de traslado de `events.travel_buffer_minutes` (por defecto 15) porque la UNI es grande.
@@ -260,7 +260,6 @@ Todo vive en columnas de `events` y se edita desde el backoffice (solo `admin`),
 | `students_per_chaperone` | 10 | Proporción mínima de acompañantes |
 | `max_visitors_per_registration`, `max_adults_per_registration` | por definir | Topes por inscripción de colegio |
 | `travel_buffer_minutes` | 15 | Margen entre recorridos para evitar cruces |
-| `registration_open` | `false` | Interruptor manual para abrir o cerrar la inscripción |
 | `registration_open` | `true` | Interruptor general para cerrar todo de inmediato |
 
 ### 3.12 Logística extensible
@@ -286,7 +285,7 @@ Todo vive en columnas de `events` y se edita desde el backoffice (solo `admin`),
 - **Flujo de entrega:** `assigned → submitted → approved | rejected` (con `reviewed_by` y `reviewed_at`).
 - **Sin solapes:** `EXCLUDE USING gist` sobre el rango de cada voluntario en `availability_slots` y sobre los recorridos de cada inscripción en `tour_enrollments`. Requiere la extensión `btree_gist`, ya añadida a `schemas/00_extension.sql` junto con `pg_cron`.
 - **Una inscripción de colegio por evento:** índice único parcial sobre `(event_id, school_id)` donde `school_id` no es nulo y el estado no es `expired` ni `cancelled`.
-- **Cupos:** `seats_taken` se actualiza solo desde las RPC y por triggers; `CHECK (seats_taken <= capacity)`.
+- **Cupos:** `seats_taken` lo mantienen solo los triggers de `tour_enrollments`; `CHECK (seats_taken <= capacity)`.
 - **Zona horaria:** todas las fechas son `timestamptz`; la presentación y el cálculo de semanas usan `America/Lima`.
 - **Extensiones para el Open Day:** `btree_gist`, `pg_cron` (liberar retenciones y enviar recordatorios) y `pg_net` o webhooks de base de datos (cola de correos).
 
