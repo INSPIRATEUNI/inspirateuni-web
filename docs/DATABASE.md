@@ -239,7 +239,7 @@ draft → held → reserved → submitted → confirmed
 | `board` | `observe_documents` | Observa con motivo y fija el plazo de reemplazo |
 | `admin` | `admin_reopen_registration`, `admin_set_attendees`, `admin_override_limits`, `admin_cancel_registration` | Overrides: exigen motivo y quedan en `registration_events` |
 
-- **Jobs de `pg_cron`** (programados en la migración `schedule_openday_jobs`): cada minuto `job_expire_holds` (retenciones vencidas, reservas pasadas de plazo y borradores abandonados tras `reservation_hours`), cada 5 min `job_check_seats` (compara `seats_taken` con la suma real, avisa con `WARNING` y corrige) y cada 15 min `job_enqueue_reminders` (12 h antes de vencer la reserva y el día antes del evento).
+- **Jobs de `pg_cron`** (declarados en `schemas/11_cron_jobs.sql`): cada minuto `job_expire_holds` (retenciones vencidas, reservas pasadas de plazo y borradores abandonados tras `reservation_hours`), cada 5 min `job_check_seats` (compara `seats_taken` con la suma real, avisa con `WARNING` y corrige) y cada 15 min `job_enqueue_reminders` (12 h antes de vencer la reserva y el día antes del evento).
 - **Sesión cancelada:** un trigger libera sus recorridos y deja las inscripciones afectadas en `needs_reassignment` con correo. Para elegir otra sesión no rige la ventana de inscripción, y al confirmar la nueva selección el plazo se recalcula sin el tope de `docs_close_at`. La inscripción vuelve a `reserved` y debe enviarse otra vez.
 
 ### 3.9 Documentos y Google Drive
@@ -290,6 +290,20 @@ Todo vive en columnas de `events` y se edita desde el backoffice (solo `admin`),
 - Para volver durante el plazo de 48 h entran a "Mi inscripción" (`/provov/open-day/mi-inscripcion`) con su correo y reciben un nuevo OTP. Cada inscripción tiene además un código de referencia corto (por ejemplo `OD-7K3F9`) para consultas con el staff. **No es una credencial.**
 - El trigger `handle_new_user` crea una fila en `profiles` para cada usuario de `auth.users`, incluidos los visitantes con OTP. No es un problema de seguridad (los permisos salen de `position_assignments`), pero las pantallas de la intranet deben partir de `position_assignments` y no de `profiles`.
 - **Sin escrituras directas:** los dueños no hacen `INSERT`/`UPDATE` sobre `event_registrations`, `event_attendees` ni `tour_enrollments`. Todo pasa por RPC `SECURITY DEFINER` con `search_path` fijo, que verifican `auth.uid()`.
+- **RLS (`schemas/10_rls_openday.sql`):** además de no definir políticas de escritura, se revocan los privilegios `INSERT`/`UPDATE`/`DELETE`/`TRUNCATE` de `anon` y `authenticated` sobre `event_registrations`, `event_attendees`, `event_passes`, `tour_enrollments`, `registration_documents`, `registration_events`, `registration_logistics` y `email_outbox`. Los archivos los escribe la Edge Function con la service role.
+
+| Tabla | Dueño | `board` | `admin` | `anon` |
+|---|---|---|---|---|
+| `event_registrations`, `event_attendees`, `tour_enrollments`, `registration_documents`, `registration_logistics` | Solo lo de su inscripción | Lee todo | Lee todo; los overrides son RPC | Nada |
+| `event_passes` | Los de las personas de su inscripción | Lee todos | Lee todos | Nada |
+| `participants`, `schools` | Los de su inscripción | Lee todos | Lee y escribe | Nada |
+| `registration_events`, `email_outbox` | Nada (son internas) | Lee | Lee | Nada |
+| `document_templates` | Solo las activas | Lee todas | Lee y escribe | Nada |
+| `logistics_options` | Solo las activas | Lee todas | Lee y escribe | Solo las activas |
+| `events`, `event_faculties` | Lee | Lee | Escribe (configuración) | Lee |
+| `tour_sessions` | Por `v_tour_availability` | Lee | Escribe | Por `v_tour_availability` |
+
+Dos RPC cierran el flujo sin escrituras directas: `set_logistics(registration_id, items)` (el dueño, mientras la inscripción está `reserved`) y `check_in_pass(access_code)` (solo `board`: marca `checked_in_at` y avisa si la persona ya había ingresado). La búsqueda por documento para el check-in la hace la directiva leyendo `participants` y `event_passes`.
 - **Correos:** cola `email_outbox` (destinatario, plantilla, datos, estado, intentos). Un webhook dispara una Edge Function con reintentos e idempotencia. Correos: OTP, reserva con enlace y plazo, recordatorio antes de vencer, reserva vencida, inscripción recibida, documentos observados, confirmación con códigos, sesión cancelada y recordatorio previo al evento. La página "Mi inscripción" muestra siempre el estado completo, sin depender del correo.
 - Proveedor de correo pendiente (ver 5). Hace falta SMTP propio para el OTP, porque el integrado de Supabase tiene un límite muy bajo.
 - **Datos de menores:** aviso de privacidad y consentimiento de tratamiento en el formulario (Ley 29733), acceso solo para el staff autorizado y carpetas de Drive privadas. Por ahora no se borran los datos; el esquema debe permitir anonimizar o borrar después.
