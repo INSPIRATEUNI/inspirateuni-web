@@ -17,6 +17,7 @@ create table public.events (
   students_per_chaperone integer not null default 10 check (students_per_chaperone > 0),
   max_visitors_per_registration integer check (max_visitors_per_registration > 0),
   max_adults_per_registration integer check (max_adults_per_registration >= 0),
+  max_drafts_per_email integer not null default 3 check (max_drafts_per_email > 0),
   travel_buffer_minutes integer not null default 15 check (travel_buffer_minutes >= 0),
   created_at timestamptz not null default now(),
   check (registration_closes_at > registration_opens_at),
@@ -33,6 +34,7 @@ comment on column public.events.max_file_mb is 'Tamaño máximo por archivo subi
 comment on column public.events.students_per_chaperone is 'Proporción mínima: acompañantes >= ceil(visitantes / este valor).';
 comment on column public.events.max_visitors_per_registration is 'Tope de visitantes por inscripción de colegio (NULL = sin tope definido).';
 comment on column public.events.max_adults_per_registration is 'Tope de adultos por inscripción de colegio (NULL = sin tope definido).';
+comment on column public.events.max_drafts_per_email is 'Anti-acaparamiento: inscripciones en curso (draft, held, reserved) por correo de contacto y evento.';
 comment on column public.events.travel_buffer_minutes is 'Margen de traslado entre recorridos, para evitar cruces de horario.';
 
 create function public.events_set_defaults()
