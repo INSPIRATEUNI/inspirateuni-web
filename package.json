@@ -7,7 +7,11 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run test:e2e:db",
+    "test:e2e:db": "cd backend && npx supabase test db",
+    "test:e2e:openday": "node backend/tests/e2e/openday_e2e_runner.mjs",
+    "test:load:k6": "k6 run backend/tests/load/k6_open_day_hold.js",
+    "test:load:pgbench": "bash backend/tests/load/run_pgbench.sh",
     "prepare": "husky"
   },
   "repository": {
