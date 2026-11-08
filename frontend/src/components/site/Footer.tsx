@@ -22,7 +22,7 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="bg-linear-to-b from-background via-tint-blue via-60% to-tint-green pt-16 pb-8">
+    <footer className="print:hidden bg-linear-to-b from-background via-tint-blue via-60% to-tint-green pt-16 pb-8">
       <div className="container-site">
         <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr] md:gap-12">
           <div>

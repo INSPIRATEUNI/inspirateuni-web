@@ -249,6 +249,16 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Código OTP de la inscripción al Open Day: el formulario pide los 6 dígitos ({{ .Token }}), no un
+# enlace. En producción hay que copiar esta plantilla en el Dashboard (Authentication > Email Templates).
+[auth.email.template.magic_link]
+subject = "Tu código para la inscripción al Open Day UNI"
+content_path = "./supabase/templates/otp_code.html"
+
+[auth.email.template.confirmation]
+subject = "Tu código para la inscripción al Open Day UNI"
+content_path = "./supabase/templates/otp_code.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

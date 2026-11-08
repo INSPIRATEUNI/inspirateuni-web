@@ -1,9 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { isIntranetSession } from "./session";
 
 const PROTECTED_PREFIX = "/intranet";
 
-/** Refresca la sesión de Supabase y protege las rutas bajo `/intranet`. */
+/**
+ * Refresca la sesión de Supabase y protege las rutas bajo `/intranet`: solo
+ * pasan las sesiones abiertas con contraseña (las de voluntarios), no las del
+ * código OTP de la inscripción al Open Day.
+ */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -30,20 +35,21 @@ export async function updateSession(request: NextRequest) {
 
   // Valida el JWT y renueva los tokens si hace falta
   const { data } = await supabase.auth.getClaims();
-  const hasSession = Boolean(data?.claims);
+  // Una sesión del Open Day (OTP) no cuenta como sesión de la intranet
+  const hasIntranetSession = isIntranetSession(data?.claims);
   const { pathname, search } = request.nextUrl;
 
   const isProtected =
     pathname === PROTECTED_PREFIX ||
     pathname.startsWith(`${PROTECTED_PREFIX}/`);
 
-  if (!hasSession && isProtected) {
+  if (!hasIntranetSession && isProtected) {
     return redirectTo(request, response, "/login", {
       next: `${pathname}${search}`,
     });
   }
 
-  if (hasSession && pathname === "/login") {
+  if (hasIntranetSession && pathname === "/login") {
     return redirectTo(request, response, PROTECTED_PREFIX);
   }
 
