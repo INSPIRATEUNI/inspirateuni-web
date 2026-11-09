@@ -38,6 +38,30 @@ export const capacitacion = [
   },
 ];
 
+/** Igual que el catálogo `faculties` (migración seed_faculties_careers). */
+export const facultades = [
+  "Facultad de Arquitectura, Urbanismo y Artes",
+  "Facultad de Ciencias",
+  "Facultad de Ingeniería Ambiental",
+  "Facultad de Ingeniería Civil",
+  "Facultad de Ingeniería Eléctrica y Electrónica",
+  "Facultad de Ingeniería Económica, Estadística y Ciencias Sociales",
+  "Facultad de Ingeniería Geológica, Minera y Metalúrgica",
+  "Facultad de Ingeniería Industrial y de Sistemas",
+  "Facultad de Ingeniería Mecánica",
+  "Facultad de Ingeniería de Petróleo, Gas Natural y Petroquímica",
+  "Facultad de Ingeniería Química y Textil",
+];
+
+/** Opciones de "¿Dónde te gustaría apoyar?" del formulario de voluntariado. */
+export const areasDeApoyo = [
+  { value: "open-day", label: "Open Day" },
+  { value: "embajador", label: "Embajador de facultad (PROEMIN)" },
+  { value: "visitas", label: "Visitas guiadas" },
+  { value: "igirl", label: "Inspírate Girl" },
+  { value: "cualquiera", label: "Donde me necesiten" },
+];
+
 /** PROEMIN: Proyecto de Embajadores que Inspiran. */
 export const embajadores = {
   requisito:

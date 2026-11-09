@@ -8,7 +8,7 @@ import { signOut } from "@/app/intranet/actions";
 import { CloseIcon, LogoutIcon, MenuIcon } from "@/components/site/Icons";
 import { cn } from "@/lib/cn";
 import { relayAt, relayClasses } from "@/lib/relay";
-import { activeHref, intranetNav } from "./navigation";
+import { activeHref, intranetNav, navFor } from "./navigation";
 
 const PANEL_ID = "menu-intranet";
 
@@ -16,9 +16,15 @@ type IntranetSidebarProps = {
   name: string;
   role: string;
   isBoard: boolean;
+  isAdmin: boolean;
 };
 
-export function IntranetSidebar({ name, role, isBoard }: IntranetSidebarProps) {
+export function IntranetSidebar({
+  name,
+  role,
+  isBoard,
+  isAdmin,
+}: IntranetSidebarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
@@ -38,11 +44,11 @@ export function IntranetSidebar({ name, role, isBoard }: IntranetSidebarProps) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const items = intranetNav.filter((item) => isBoard || !item.boardOnly);
+  const items = navFor(intranetNav, isBoard, isAdmin);
   const current = activeHref(pathname, items);
 
   return (
-    <aside className="border-b border-border bg-surface lg:sticky lg:top-0 lg:h-dvh lg:w-72 lg:shrink-0 lg:border-r lg:border-b-0">
+    <aside className="border-b border-border bg-surface print:hidden lg:sticky lg:top-0 lg:h-dvh lg:w-72 lg:shrink-0 lg:border-r lg:border-b-0">
       <div className="flex h-16 items-center justify-between px-5 lg:h-auto lg:px-6 lg:pt-6">
         <Link href="/intranet" className="inline-flex items-center">
           <Image

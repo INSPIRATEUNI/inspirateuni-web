@@ -9,7 +9,7 @@
 
 ## Variables de entorno
 
-Producción: `supabase secrets set --env-file <archivo>` (el archivo no se commitea). Local: `supabase functions serve --env-file <archivo>`.
+Producción: `supabase secrets set --env-file <archivo>` (el archivo no se commitea). Local: `supabase functions serve --env-file <archivo>`. Plantilla: [`.env.example`](./.env.example).
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` las inyecta Supabase.
 
 | Variable | Función | Para qué |
@@ -51,6 +51,6 @@ Es independiente de la cola: se configura en el Dashboard (Authentication > SMTP
 ```bash
 cd backend
 npx supabase start
-npx supabase functions serve --env-file supabase/functions/.env.local   # .env.local está ignorado por git
+npx supabase functions serve --env-file supabase/functions/.env   # copia de .env.example; .env está ignorado por git
 ```
 Los tipos se comprueban con `deno check --node-modules-dir=none --no-lock supabase/functions/*/index.ts` (la raíz del repo tiene un `package.json` que desorienta a Deno si no se pasa esa opción).

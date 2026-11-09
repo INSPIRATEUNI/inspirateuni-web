@@ -41,7 +41,7 @@ export default async function ReportPage({
   params,
 }: PageProps<"/intranet/tareas/[id]/reportar">) {
   const { id } = await params;
-  if (!z.uuid().safeParse(id).success) notFound();
+  if (!z.guid().safeParse(id).success) notFound();
 
   const user = await getCurrentUser();
   if (!user) notFound();

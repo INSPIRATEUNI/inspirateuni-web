@@ -1,8 +1,8 @@
+import { IgirlForm } from "@/components/forms/IgirlForm";
 import { ImageSlot } from "@/components/gallery/ImageSlot";
 import { Bullets } from "@/components/programs/Bullets";
 import { BoltIcon, SparkleIcon } from "@/components/site/Icons";
 import { Mascot } from "@/components/site/Mascot";
-import { contact } from "@/components/site/navigation";
 import { buttonClasses } from "@/components/ui/Button";
 import { GradientText } from "@/components/ui/GradientText";
 import { Heading } from "@/components/ui/Heading";
@@ -62,7 +62,7 @@ export default function InspirateGirlPage() {
                 <BoltIcon />
               </a>
               <a
-                href={`mailto:${contact.email}?subject=Quiero participar en Inspírate Girl`}
+                href="#participa"
                 className={buttonClasses({ variant: "ghost" })}
               >
                 Quiero participar
@@ -145,6 +145,27 @@ export default function InspirateGirlPage() {
             </p>
           </div>
         </div>
+
+        <section
+          id="participa"
+          aria-labelledby="participa-title"
+          className="mt-20 grid scroll-mt-24 gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16"
+        >
+          <div>
+            <Text variant="eyebrow">Súmate</Text>
+            <Heading id="participa-title" variant="section" className="mt-3">
+              Quiero <GradientText gradient="energy">participar</GradientText>.
+            </Heading>
+            <Text variant="muted" className="mt-4">
+              Cuéntanos cómo quieres sumarte: en nuestras actividades, como
+              voluntaria o con tu colegio u organización. Te escribiremos con lo
+              que viene.
+            </Text>
+          </div>
+          <div className="rounded-lg border-2 border-border bg-surface p-6 shadow-soft sm:p-8">
+            <IgirlForm />
+          </div>
+        </section>
       </div>
     </section>
   );

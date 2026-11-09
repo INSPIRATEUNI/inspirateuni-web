@@ -1,17 +1,11 @@
-// Documentos del Open Day en Google Drive.
-//   create_session → abre una sesión de subida reanudable; el navegador sube directo a Google.
+// Documentos del Open Day: Google Drive en producción y Supabase Storage como respaldo local
+// (ver _shared/document-store.ts).
+//   create_session → abre la subida; el navegador sube directo a Google (o a Storage con un token firmado).
 //   finalize       → verifica el archivo subido (dueño, tipo, tamaño y %PDF) y lo registra.
-//   download       → sirve el PDF al staff (board/admin) en streaming; nunca se comparten enlaces de Drive.
-// El navegador no recibe credenciales de Drive. Todo el acceso pasa por lib/storage.ts del frontend.
+//   download       → sirve el PDF al staff (board/admin) en streaming; nunca se comparten enlaces.
+// El navegador no recibe credenciales. Todo el acceso pasa por lib/storage.ts del frontend.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
-import {
-  createResumableSession,
-  discard,
-  download,
-  driveFolderId,
-  getFile,
-  readHead,
-} from "../_shared/google.ts";
+import { type DocumentStore, storeFor, uploadStore } from "../_shared/document-store.ts";
 import { corsHeaders, errorResponse, HttpError, json, validOrigin } from "../_shared/http.ts";
 
 const PDF = "application/pdf";
@@ -105,7 +99,7 @@ function parseId(value: unknown, label: string): string {
 }
 
 async function createSession(req: Request, body: Record<string, unknown>) {
-  const { user, userId } = await authenticate(req);
+  const { user, admin, userId } = await authenticate(req);
   const registrationId = parseId(body.registration_id, "la inscripción");
   const kind = parseKind(body.kind);
   const size = Number(body.size);
@@ -121,15 +115,14 @@ async function createSession(req: Request, body: Record<string, unknown>) {
     );
   }
 
-  const uploadUrl = await createResumableSession({
+  const target = await uploadStore(admin).createUpload({
     name: safeFileName(registration.reference_code, kind),
     size,
     mimeType: PDF,
-    folderId: driveFolderId(),
     origin: validOrigin(req),
-    appProperties: { registration_id: registration.id, kind, owner_id: userId },
+    owner: { registration_id: registration.id, kind, owner_id: userId },
   });
-  return json(req, { upload_url: uploadUrl, max_bytes: registration.maxBytes });
+  return json(req, { ...target, max_bytes: registration.maxBytes });
 }
 
 async function finalize(req: Request, body: Record<string, unknown>) {
@@ -137,35 +130,28 @@ async function finalize(req: Request, body: Record<string, unknown>) {
   const registrationId = parseId(body.registration_id, "la inscripción");
   const kind = parseKind(body.kind);
   const fileId = parseId(body.file_id, "el archivo");
+  const store = uploadStore(admin);
 
   // Reintento del mismo archivo: devuelve el registro existente (idempotente)
   const { data: existing } = await admin
     .from("registration_documents")
     .select("id")
     .eq("registration_id", registrationId)
-    .eq("drive_file_id", fileId)
+    .eq("drive_file_id", store.storedId(fileId))
     .maybeSingle();
   if (existing) return json(req, { document_id: existing.id });
 
   const registration = await loadOwnRegistration(user, registrationId, kind);
 
-  const file = await getFile(fileId);
-  if (!file) throw new HttpError(422, "file_missing", "No encontramos el archivo subido");
-
   // El archivo debe ser el que abrió nuestra sesión: misma inscripción, tipo, dueño y carpeta
-  const props = file.appProperties ?? {};
-  const mine =
-    props.registration_id === registration.id &&
-    props.kind === kind &&
-    props.owner_id === userId &&
-    file.parents?.includes(driveFolderId()) === true &&
-    !file.trashed;
-  if (!mine) throw new HttpError(403, "file_not_yours", "El archivo no corresponde a esta inscripción");
+  const file = await store.inspect(fileId, { registration_id: registration.id, kind, owner_id: userId });
+  if (!file) throw new HttpError(422, "file_missing", "No encontramos el archivo subido");
+  if (!file.owned) throw new HttpError(403, "file_not_yours", "El archivo no corresponde a esta inscripción");
 
-  const size = Number(file.size ?? 0);
-  const problem = await checkPdf(file.id, file.mimeType, size, registration.maxBytes);
+  const size = file.size;
+  const problem = await checkPdf(store, fileId, file.mimeType, size, registration.maxBytes);
   if (problem) {
-    await discard(file.id);
+    await store.discard(fileId);
     throw problem;
   }
 
@@ -173,24 +159,30 @@ async function finalize(req: Request, body: Record<string, unknown>) {
     p_registration_id: registration.id,
     p_actor_id: userId,
     p_kind: kind,
-    p_drive_file_id: file.id,
+    p_drive_file_id: file.storedId,
     p_file_name: String(body.file_name ?? file.name).slice(0, MAX_NAME),
     p_size_bytes: size,
   });
   if (error) {
-    await discard(file.id);
+    await store.discard(fileId);
     throw rpcError(error);
   }
   return json(req, { document_id: data });
 }
 
-async function checkPdf(fileId: string, mimeType: string, size: number, maxBytes: number): Promise<HttpError | null> {
+async function checkPdf(
+  store: DocumentStore,
+  fileId: string,
+  mimeType: string,
+  size: number,
+  maxBytes: number,
+): Promise<HttpError | null> {
   if (mimeType !== PDF) return new HttpError(422, "invalid_type", "Solo se aceptan archivos PDF");
   if (size <= 0) return new HttpError(422, "empty_file", "El archivo está vacío");
   if (size > maxBytes) {
     return new HttpError(413, "file_too_large", `El archivo supera el máximo de ${maxBytes / 1024 / 1024} MB`);
   }
-  const head = new TextDecoder("latin1").decode(await readHead(fileId, 5));
+  const head = new TextDecoder("latin1").decode(await store.readHead(fileId, 5));
   if (head !== "%PDF-") return new HttpError(422, "invalid_pdf", "El archivo no es un PDF válido");
   return null;
 }
@@ -219,7 +211,7 @@ async function downloadDocument(req: Request, body: Record<string, unknown>) {
     detail: { document_id: doc.id },
   });
 
-  const upstream = await download(doc.drive_file_id);
+  const upstream = await storeFor(doc.drive_file_id, admin).download(doc.drive_file_id);
   return new Response(upstream.body, {
     headers: {
       ...corsHeaders(req),

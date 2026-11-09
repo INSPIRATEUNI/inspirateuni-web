@@ -10,7 +10,8 @@ import { createClient } from "@/lib/supabase/client";
  * cambiar el almacenamiento sin tocar los formularios.
  * - Evidencias de horas: hoy en Supabase Storage (la ruta del objeto se guarda
  *   en `submission_evidences.drive_file_id`); destino final: Drive.
- * - Documentos del Open Day: Google Drive vía la Edge Function `drive-upload`.
+ * - Documentos del Open Day: Google Drive vía la Edge Function `drive-upload`
+ *   (en local puede usar Supabase Storage, ver `UploadTarget`).
  */
 
 /** Nombre apto para una ruta de Storage: sin tildes ni caracteres raros. */
@@ -208,8 +209,60 @@ export async function uploadRegistrationDocument(options: {
     size: file.size,
     mime_type: PDF_TYPE,
   });
-  const { upload_url: uploadUrl } = await session.json();
+  const target = (await session.json()) as UploadTarget;
+  const fileId =
+    target.provider === "supabase"
+      ? await uploadToStorage(target, file, onProgress, signal)
+      : await uploadToDrive(target.upload_url, file, onProgress, signal);
 
+  const finalized = await callDriveFunction({
+    action: "finalize",
+    registration_id: registrationId,
+    kind,
+    file_id: fileId,
+    file_name: file.name,
+  });
+  const { document_id: documentId } = await finalized.json();
+  return { documentId };
+}
+
+/** Lo que devuelve `create_session`: Drive (producción) o Storage (respaldo local, DOCUMENT_STORAGE=supabase). */
+type UploadTarget =
+  | { provider?: "drive"; upload_url: string }
+  | { provider: "supabase"; bucket: string; path: string; token: string };
+
+/** Respaldo local: sube de una vez con el token firmado de un solo uso que emitió la función. */
+async function uploadToStorage(
+  target: { bucket: string; path: string; token: string },
+  file: File,
+  onProgress?: (sentBytes: number, totalBytes: number) => void,
+  signal?: AbortSignal,
+) {
+  signal?.throwIfAborted();
+  onProgress?.(0, file.size);
+  const { error } = await createClient()
+    .storage.from(target.bucket)
+    .uploadToSignedUrl(target.path, target.token, file, {
+      contentType: PDF_TYPE,
+    });
+  if (error) {
+    throw new StorageError(
+      "upload_failed",
+      "Se interrumpió la subida. Inténtalo de nuevo.",
+    );
+  }
+  signal?.throwIfAborted();
+  onProgress?.(file.size, file.size);
+  return target.path;
+}
+
+/** Subida reanudable a Drive por fragmentos; devuelve el id del archivo en Drive. */
+async function uploadToDrive(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (sentBytes: number, totalBytes: number) => void,
+  signal?: AbortSignal,
+) {
   let offset = 0;
   let fileId: string | null = null;
   onProgress?.(0, file.size);
@@ -223,16 +276,7 @@ export async function uploadRegistrationDocument(options: {
       onProgress?.(offset, file.size);
     }
   }
-
-  const finalized = await callDriveFunction({
-    action: "finalize",
-    registration_id: registrationId,
-    kind,
-    file_id: fileId,
-    file_name: file.name,
-  });
-  const { document_id: documentId } = await finalized.json();
-  return { documentId };
+  return fileId;
 }
 
 export async function getRegistrationDocumentUrl(documentId: string) {

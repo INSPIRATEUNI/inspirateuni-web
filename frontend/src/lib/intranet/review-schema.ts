@@ -78,7 +78,7 @@ export type ReviewFormValues = z.infer<typeof reviewBase>;
 
 /** Server Action: los mismos campos más la entrega que se revisa. */
 export const reviewInputSchema = reviewBase.extend({
-  submissionId: z.uuid(),
+  submissionId: z.guid(),
 });
 
 export type ReviewInput = z.infer<typeof reviewInputSchema>;

@@ -1,8 +1,9 @@
+import { VolunteerForm } from "@/components/forms/VolunteerForm";
 import { ImageSlot } from "@/components/gallery/ImageSlot";
 import { Bullets } from "@/components/programs/Bullets";
 import { BoltIcon, CalendarIcon, SparkleIcon } from "@/components/site/Icons";
 import { Mascot } from "@/components/site/Mascot";
-import { contact, socialLinks } from "@/components/site/navigation";
+import { socialLinks } from "@/components/site/navigation";
 import { buttonClasses } from "@/components/ui/Button";
 import { GradientText } from "@/components/ui/GradientText";
 import { Heading } from "@/components/ui/Heading";
@@ -16,7 +17,16 @@ import {
   funciones,
 } from "@/data/voluntariado";
 import { cn } from "@/lib/cn";
+import {
+  type ConvocatoriaStatus,
+  convocatoriaStatus,
+  convocatoriaYear,
+} from "@/lib/forms/convocatoria";
 import { type RelayColor, relayAt } from "@/lib/relay";
+
+// La página es estática: se regenera cada hora para que abrir o cerrar la
+// convocatoria cambie el texto sin un nuevo build.
+export const revalidate = 3600;
 
 const statClasses: Record<RelayColor, string> = {
   magenta: "text-magenta-deep",
@@ -32,7 +42,35 @@ const borderClasses: Record<RelayColor, string> = {
   green: "border-green",
 };
 
+/** Textos de la sección #postula según el estado de la convocatoria. */
+const postulaCopy: Record<
+  ConvocatoriaStatus,
+  { tag: string; title: string; keyword: string; lead: string }
+> = {
+  upcoming: {
+    tag: "Próxima convocatoria",
+    title: "Te avisamos cuando",
+    keyword: "abra",
+    lead: `La convocatoria ${convocatoriaYear} va ${convocatoria.label.toLowerCase()}. Déjanos tus datos y te avisamos cuando abra.`,
+  },
+  open: {
+    tag: "Convocatoria abierta",
+    title: "Postula al",
+    keyword: "voluntariado",
+    lead: `Convocatoria ${convocatoriaYear}: ${convocatoria.label.toLowerCase()}. Revisaremos tus datos y te escribiremos con los siguientes pasos.`,
+  },
+  closed: {
+    tag: "Convocatoria cerrada",
+    title: "Te avisamos en la",
+    keyword: "próxima",
+    lead: `La convocatoria ${convocatoriaYear} ya cerró. Déjanos tus datos y te avisamos en la próxima.`,
+  },
+};
+
 export default function VoluntariadoPage() {
+  const status = convocatoriaStatus();
+  const copy = postulaCopy[status];
+
   return (
     <>
       <section className="relative overflow-hidden pt-14 pb-20">
@@ -69,10 +107,7 @@ export default function VoluntariadoPage() {
                 <time dateTime={convocatoria.start}>{convocatoria.label}</time>
               </span>
             </p>
-            <a
-              href={`mailto:${contact.email}?subject=Quiero ser voluntario de Inspírate UNI`}
-              className={buttonClasses({ className: "mt-8" })}
-            >
+            <a href="#postula" className={buttonClasses({ className: "mt-8" })}>
               Quiero ser voluntario
               <BoltIcon />
             </a>
@@ -180,6 +215,28 @@ export default function VoluntariadoPage() {
                 </div>
               ))}
             </dl>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="postula"
+        aria-labelledby="postula-title"
+        className="scroll-mt-24 bg-tint-green py-16"
+      >
+        <div className="container-site grid max-w-6xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+          <div>
+            <Tag tone="green">{copy.tag}</Tag>
+            <Heading id="postula-title" variant="section" className="mt-4">
+              {copy.title}{" "}
+              <GradientText gradient="fresh">{copy.keyword}</GradientText>.
+            </Heading>
+            <Text variant="lead" className="mt-4">
+              {copy.lead}
+            </Text>
+          </div>
+          <div className="rounded-lg border-2 border-border bg-surface p-6 shadow-soft sm:p-8">
+            <VolunteerForm open={status === "open"} />
           </div>
         </div>
       </section>

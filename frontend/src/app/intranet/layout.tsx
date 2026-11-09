@@ -15,10 +15,11 @@ export default async function IntranetLayout({
         name={user.fullName}
         role={formatRole(user.primaryRole)}
         isBoard={user.isBoard}
+        isAdmin={user.isAdmin}
       />
       <main
         id="contenido"
-        className="min-w-0 flex-1 px-5 py-10 sm:px-8 lg:px-12"
+        className="min-w-0 flex-1 px-5 py-10 sm:px-8 lg:px-12 print:p-0"
       >
         {children}
       </main>

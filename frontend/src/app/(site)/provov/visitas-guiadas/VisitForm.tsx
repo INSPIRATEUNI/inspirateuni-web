@@ -1,15 +1,30 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { type ReactNode, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { FormSuccess } from "@/components/forms/FormSuccess";
+import {
+  ConsentField,
+  SelectField,
+  TextField,
+} from "@/components/forms/fields";
+import { CAPTCHA_MISSING, useAntispam } from "@/components/forms/useAntispam";
+import { Notice } from "@/components/open-day/Notice";
 import { CalendarIcon, CampusIcon, UsersIcon } from "@/components/site/Icons";
-import { Mascot } from "@/components/site/Mascot";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Select } from "@/components/ui/Field";
 import { GradientText } from "@/components/ui/GradientText";
-import { Heading } from "@/components/ui/Heading";
 import { Text } from "@/components/ui/Text";
 import { cn } from "@/lib/cn";
+import {
+  limaDate,
+  type VisitValues,
+  visitModes,
+  visitSchema,
+  visitShifts,
+} from "@/lib/forms/schemas";
 import { relayAt, relayClasses } from "@/lib/relay";
+import { submitVisit } from "./actions";
 
 type Step = {
   title: string;
@@ -17,160 +32,189 @@ type Step = {
   fields: ReactNode;
 };
 
-const steps: Step[] = [
-  {
-    title: "Cuéntanos de tu colegio",
-    icon: <CampusIcon className="size-5" />,
-    fields: (
-      <>
-        <Field
-          id="visit-school"
-          label="¿Cómo se llama tu colegio?"
-          className="sm:col-span-2"
-        >
-          <Input
-            id="visit-school"
-            name="school"
-            placeholder="I.E. José Carlos Mariátegui"
-            required
-          />
-        </Field>
-        <Field id="visit-district" label="¿En qué distrito está?">
-          <Input
-            id="visit-district"
-            name="district"
-            placeholder="San Martín de Porres"
-            required
-          />
-        </Field>
-        <Field
-          id="visit-students"
-          label="¿Cuántos escolares serán?"
-          hint="Un aproximado está bien."
-        >
-          <Input
-            type="number"
-            id="visit-students"
-            name="students"
-            aria-describedby="visit-students-hint"
-            min={10}
-            step={5}
-            placeholder="60"
-            required
-          />
-        </Field>
-      </>
-    ),
-  },
-  {
-    title: "Elige la fecha",
-    icon: <CalendarIcon />,
-    fields: (
-      <>
-        <Field
-          id="visit-mode"
-          label="¿Dónde será la visita?"
-          className="sm:col-span-2"
-        >
-          <Select id="visit-mode" name="mode" defaultValue="" required>
-            <option value="" disabled>
-              Elige una modalidad
-            </option>
-            <option value="uni">Vamos a la UNI</option>
-            <option value="colegio">Vengan a nuestro colegio</option>
-          </Select>
-        </Field>
-        <Field id="visit-date" label="¿Qué día te acomoda?">
-          <Input type="date" id="visit-date" name="date" required />
-        </Field>
-        <Field id="visit-shift" label="¿En qué turno?">
-          <Select id="visit-shift" name="shift" defaultValue="" required>
-            <option value="" disabled>
-              Elige un turno
-            </option>
-            <option value="manana">Mañana</option>
-            <option value="tarde">Tarde</option>
-          </Select>
-        </Field>
-      </>
-    ),
-  },
-  {
-    title: "¿Cómo te contactamos?",
-    icon: <UsersIcon />,
-    fields: (
-      <>
-        <Field id="visit-name" label="Tu nombre" className="sm:col-span-2">
-          <Input id="visit-name" name="name" autoComplete="name" required />
-        </Field>
-        <Field id="visit-email" label="Tu correo">
-          <Input
-            type="email"
-            id="visit-email"
-            name="email"
-            autoComplete="email"
-            required
-          />
-        </Field>
-        <Field id="visit-phone" label="Tu celular">
-          <Input
-            type="tel"
-            id="visit-phone"
-            name="phone"
-            autoComplete="tel"
-            placeholder="9XX XXX XXX"
-          />
-        </Field>
-      </>
-    ),
-  },
-];
+const emptyValues: VisitValues = {
+  school: "",
+  district: "",
+  students: Number.NaN,
+  mode: "",
+  date: "",
+  shift: "",
+  name: "",
+  email: "",
+  phone: "",
+  consent: false,
+};
 
 export function VisitForm() {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<VisitValues>({
+    resolver: zodResolver(visitSchema),
+    defaultValues: emptyValues,
+  });
+  const antispam = useAntispam();
+  const [serverError, setServerError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  // En el cliente: la página es estática y la fecha del build quedaría vieja
+  const [minDate, setMinDate] = useState<string>();
+  useEffect(() => {
+    setMinDate(limaDate(1));
+  }, []);
+
+  const onSubmit = handleSubmit(async (values) => {
+    setServerError(null);
+    if (antispam.captchaMissing) {
+      setServerError(CAPTCHA_MISSING);
+      return;
+    }
+    const result = await submitVisit(values, antispam.meta());
+    antispam.afterSubmit(result.ok);
+    if (result.ok) {
+      reset(emptyValues);
+      setSent(true);
+    } else {
+      setServerError(result.error);
+    }
+  });
 
   if (sent) {
     return (
-      <div
-        role="status"
-        className="flex flex-col items-center gap-6 py-10 text-center sm:flex-row sm:text-left"
-      >
-        <Mascot
-          pose="alegre"
-          className="w-28 shrink-0 animate-mascot-float sm:w-36 motion-reduce:animate-none"
-        />
-        <div>
-          <Heading variant="section" level={3}>
+      <FormSuccess
+        title={
+          <>
             Listo,{" "}
             <GradientText gradient="fresh">nos vemos pronto</GradientText>.
-          </Heading>
-          <Text variant="lead" className="mt-3">
-            Recibimos tu solicitud. Te escribiremos en las próximas 48 horas
-            para confirmar la fecha.
-          </Text>
-          <Button
-            variant="ghost"
-            className="mt-6"
-            onClick={() => setSent(false)}
-          >
+          </>
+        }
+        action={
+          <Button variant="ghost" onClick={() => setSent(false)}>
             Pedir otra visita
           </Button>
-        </div>
-      </div>
+        }
+      >
+        Recibimos tu solicitud. Te escribiremos en las próximas 48 horas para
+        confirmar la fecha.
+      </FormSuccess>
     );
   }
 
+  const steps: Step[] = [
+    {
+      title: "Cuéntanos de tu colegio",
+      icon: <CampusIcon className="size-5" />,
+      fields: (
+        <>
+          <TextField
+            id="visit-school"
+            label="¿Cómo se llama tu colegio?"
+            placeholder="I.E. José Carlos Mariátegui"
+            className="sm:col-span-2"
+            error={errors.school?.message}
+            {...register("school")}
+          />
+          <TextField
+            id="visit-district"
+            label="¿En qué distrito está?"
+            placeholder="San Martín de Porres"
+            error={errors.district?.message}
+            {...register("district")}
+          />
+          <TextField
+            id="visit-students"
+            type="number"
+            inputMode="numeric"
+            label="¿Cuántos escolares serán?"
+            hint="Un aproximado está bien."
+            min={10}
+            step={5}
+            placeholder="60"
+            error={errors.students?.message}
+            {...register("students", { valueAsNumber: true })}
+          />
+        </>
+      ),
+    },
+    {
+      title: "Elige la fecha",
+      icon: <CalendarIcon />,
+      fields: (
+        <>
+          <SelectField
+            id="visit-mode"
+            label="¿Dónde será la visita?"
+            placeholder="Elige una modalidad"
+            options={visitModes}
+            className="sm:col-span-2"
+            error={errors.mode?.message}
+            {...register("mode")}
+          />
+          <TextField
+            id="visit-date"
+            type="date"
+            label="¿Qué día te acomoda?"
+            min={minDate}
+            error={errors.date?.message}
+            {...register("date")}
+          />
+          <SelectField
+            id="visit-shift"
+            label="¿En qué turno?"
+            placeholder="Elige un turno"
+            options={visitShifts}
+            error={errors.shift?.message}
+            {...register("shift")}
+          />
+        </>
+      ),
+    },
+    {
+      title: "¿Cómo te contactamos?",
+      icon: <UsersIcon />,
+      fields: (
+        <>
+          <TextField
+            id="visit-name"
+            label="Tu nombre"
+            autoComplete="name"
+            className="sm:col-span-2"
+            error={errors.name?.message}
+            {...register("name")}
+          />
+          <TextField
+            id="visit-email"
+            type="email"
+            label="Tu correo"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register("email")}
+          />
+          <TextField
+            id="visit-phone"
+            type="tel"
+            label="Tu celular"
+            hint="Opcional."
+            inputMode="numeric"
+            autoComplete="tel-national"
+            placeholder="9XX XXX XXX"
+            error={errors.phone?.message}
+            {...register("phone")}
+          />
+          <ConsentField
+            id="visit-consent"
+            className="sm:col-span-2"
+            error={errors.consent?.message}
+            {...register("consent")}
+          />
+        </>
+      ),
+    },
+  ];
+
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        setSent(true);
-        const reduceMotion = window.matchMedia(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
-        window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
-      }}
-    >
+    <form noValidate onSubmit={onSubmit}>
       <ol className="relative grid gap-12">
         <span
           aria-hidden="true"
@@ -199,13 +243,22 @@ export function VisitForm() {
           </li>
         ))}
       </ol>
-      <div className="mt-12 flex flex-col items-start gap-3 pl-17 sm:flex-row sm:items-center">
-        <Button type="submit" bolt>
-          Solicitar visita
-        </Button>
-        <Text variant="muted" className="text-sm">
-          Es gratis y sin compromiso.
-        </Text>
+      <div className="mt-12 grid gap-5 pl-17">
+        {antispam.fields}
+        {serverError && <Notice tone="error">{serverError}</Notice>}
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <Button
+            type="submit"
+            bolt={!isSubmitting}
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+          >
+            {isSubmitting ? "Enviando…" : "Solicitar visita"}
+          </Button>
+          <Text variant="muted" className="text-sm">
+            Es gratis y sin compromiso.
+          </Text>
+        </div>
       </div>
     </form>
   );

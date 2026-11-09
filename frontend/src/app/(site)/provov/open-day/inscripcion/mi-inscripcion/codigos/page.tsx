@@ -11,7 +11,7 @@ import {
   fetchMyRegistrations,
   fetchPasses,
 } from "@/lib/open-day/data";
-import { formatEventDate, formatTime } from "@/lib/open-day/format";
+import { formatEventDate, formatGate, formatTime } from "@/lib/open-day/format";
 import { getSessionUser } from "@/lib/open-day/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -118,9 +118,7 @@ export default async function CodigosPage({
                   <span aria-hidden="true">{groupCode(pass.accessCode)}</span>
                 </p>
                 <p className="text-sm">
-                  {registration.gate
-                    ? `Puerta ${registration.gate}`
-                    : "Puerta por confirmar"}
+                  {formatGate(registration.gate)}
                   {registration.arrivalAt &&
                     ` · Llegada ${formatTime(registration.arrivalAt)}`}
                   {` · ${registration.referenceCode}`}

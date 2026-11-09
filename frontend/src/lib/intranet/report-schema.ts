@@ -50,7 +50,7 @@ export type ReportFormValues = z.infer<typeof reportFormSchema>;
 
 /** Servidor: las evidencias ya están en Storage y llegan como metadatos. */
 export const reportSchema = reportFields.extend({
-  taskId: z.uuid(),
+  taskId: z.guid(),
   evidences: z
     .array(
       z.object({
