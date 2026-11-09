@@ -1,6 +1,9 @@
 // Cliente mínimo de Google Drive con cuenta de servicio (sin dependencias).
 // La cuenta de servicio no tiene cuota propia: GOOGLE_DRIVE_FOLDER_ID debe estar en una unidad
 // compartida (o usar delegación de dominio con GOOGLE_IMPERSONATE_USER). Ver spike 1.5.0.
+// Los fallos se devuelven como HttpError con código estable: `storage_not_configured` si falta
+// una variable y `storage_unavailable` si Google responde mal (el detalle queda en el log).
+import { HttpError } from "./http.ts";
 
 const TOKEN_URI = "https://oauth2.googleapis.com/token";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
@@ -14,8 +17,34 @@ let signingKey: CryptoKey | null = null;
 
 function env(name: string): string {
   const value = Deno.env.get(name);
-  if (!value) throw new Error(`Falta la variable de entorno ${name}`);
+  if (!value) {
+    console.error(`Falta la variable de entorno ${name} (ver supabase/functions/README.md)`);
+    throw new HttpError(
+      503,
+      "storage_not_configured",
+      "La subida de documentos aún no está configurada. Avísale al equipo de InspírateUNI.",
+    );
+  }
   return value;
+}
+
+/** Error de Google: se registra el detalle y el usuario recibe un mensaje estable. */
+function upstream(detail: string): HttpError {
+  console.error(detail);
+  return new HttpError(
+    502,
+    "storage_unavailable",
+    "No pudimos conectar con el almacenamiento de documentos. Inténtalo en unos minutos.",
+  );
+}
+
+function serviceAccount(): ServiceAccount {
+  try {
+    return JSON.parse(env("GOOGLE_SERVICE_ACCOUNT_JSON")) as ServiceAccount;
+  } catch (err) {
+    if (err instanceof HttpError) throw err;
+    throw upstream("GOOGLE_SERVICE_ACCOUNT_JSON no es un JSON válido (debe ir en una sola línea)");
+  }
 }
 
 export function driveFolderId(): string {
@@ -51,7 +80,7 @@ export async function accessToken(): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   if (cached && cached.expiresAt - 60 > now) return cached.token;
 
-  const account = JSON.parse(env("GOOGLE_SERVICE_ACCOUNT_JSON")) as ServiceAccount;
+  const account = serviceAccount();
   const claims: Record<string, unknown> = {
     iss: account.client_email,
     scope: DRIVE_SCOPE,
@@ -76,7 +105,7 @@ export async function accessToken(): Promise<string> {
       assertion: `${unsigned}.${b64url(signature)}`,
     }),
   });
-  if (!res.ok) throw new Error(`Google no entregó el token (HTTP ${res.status})`);
+  if (!res.ok) throw upstream(`Google no entregó el token (HTTP ${res.status}): ${await res.text()}`);
   const data = (await res.json()) as { access_token: string; expires_in: number };
   cached = { token: data.access_token, expiresAt: now + data.expires_in };
   return cached.token;
@@ -116,10 +145,10 @@ export async function createResumableSession(opts: {
     }),
   });
   if (!res.ok) {
-    throw new Error(`Drive no abrió la sesión de subida (HTTP ${res.status}): ${await res.text()}`);
+    throw upstream(`Drive no abrió la sesión de subida (HTTP ${res.status}): ${await res.text()}`);
   }
   const location = res.headers.get("location");
-  if (!location) throw new Error("Drive no devolvió la URL de subida");
+  if (!location) throw upstream("Drive no devolvió la URL de subida");
   return location;
 }
 
@@ -140,7 +169,7 @@ export async function getFile(fileId: string): Promise<DriveFile | null> {
     { headers: await authHeaders() },
   );
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Drive no leyó el archivo (HTTP ${res.status})`);
+  if (!res.ok) throw upstream(`Drive no leyó el archivo (HTTP ${res.status})`);
   return (await res.json()) as DriveFile;
 }
 
@@ -149,7 +178,7 @@ export async function readHead(fileId: string, bytes: number): Promise<Uint8Arra
   const res = await fetch(`${FILES_URI}/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, {
     headers: { ...(await authHeaders()), Range: `bytes=0-${bytes - 1}` },
   });
-  if (!res.ok && res.status !== 206) throw new Error(`Drive no leyó el contenido (HTTP ${res.status})`);
+  if (!res.ok && res.status !== 206) throw upstream(`Drive no leyó el contenido (HTTP ${res.status})`);
   return new Uint8Array(await res.arrayBuffer()).slice(0, bytes);
 }
 
@@ -158,7 +187,7 @@ export async function download(fileId: string): Promise<Response> {
   const res = await fetch(`${FILES_URI}/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, {
     headers: await authHeaders(),
   });
-  if (!res.ok) throw new Error(`Drive no descargó el archivo (HTTP ${res.status})`);
+  if (!res.ok) throw upstream(`Drive no descargó el archivo (HTTP ${res.status})`);
   return res;
 }
 

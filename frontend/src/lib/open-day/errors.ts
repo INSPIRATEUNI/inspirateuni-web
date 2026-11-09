@@ -44,6 +44,19 @@ const MESSAGES: Record<string, string> = {
   empty_file: "El archivo está vacío.",
   network: "No pudimos conectar. Revisa tu conexión.",
   upload_failed: "Se interrumpió la subida. Inténtalo de nuevo.",
+  file_missing: "No encontramos el archivo subido. Vuelve a subirlo.",
+  file_not_yours:
+    "El archivo no corresponde a esta inscripción. Vuelve a subirlo.",
+  invalid_request: "No pudimos procesar la solicitud. Recarga la página.",
+  storage_not_configured:
+    "La subida de documentos aún no está configurada. Avísale al equipo de InspírateUNI.",
+  storage_unavailable:
+    "No pudimos conectar con el almacenamiento de documentos. Inténtalo en unos minutos.",
+  internal: "Algo falló de nuestro lado. Inténtalo de nuevo en unos minutos.",
+  // staff
+  forbidden: "No tienes permiso para hacer esto.",
+  reason_required: "Escribe el motivo.",
+  not_confirmed: "La inscripción de esta persona no está confirmada.",
 };
 
 const FALLBACK = "No pudimos completar la operación. Inténtalo de nuevo.";
