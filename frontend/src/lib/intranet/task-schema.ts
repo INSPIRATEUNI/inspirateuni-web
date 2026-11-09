@@ -32,7 +32,7 @@ export const taskSchema = z.object({
       "La fecha límite no puede ser anterior a hoy.",
     ),
   assigneeIds: z
-    .array(z.uuid())
+    .array(z.guid())
     .min(1, "Elige al menos un voluntario para la tarea."),
 });
 
