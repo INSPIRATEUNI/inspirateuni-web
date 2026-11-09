@@ -2,7 +2,7 @@
 -- Test: RLS del Open Day. El dueño ve solo lo suyo y no escribe directo; board lee y exporta;
 -- admin cambia la configuración; anon no ve inscripciones.
 BEGIN;
-SELECT plan(62);
+SELECT plan(65);
 
 -- Cuenta las filas que cambia un UPDATE con los permisos de quien llama (RLS filtra sin error)
 CREATE FUNCTION pg_temp.upd(sql text) RETURNS integer LANGUAGE plpgsql AS $$
@@ -200,8 +200,14 @@ SELECT throws_ok(
   $$ INSERT INTO public.document_templates (kind, version, drive_file_id) VALUES ('commitment_letter', 1, 'x') $$,
   '42501', NULL, 'La directiva no crea plantillas'
 );
+SELECT is((SELECT public.check_in_pass((SELECT access_code FROM public.event_passes WHERE id = '90000000-0000-0000-0000-000000000001')) ->> 'error'), 'not_confirmed', 'Sin inscripción confirmada no se registra el ingreso');
+RESET ROLE;
+UPDATE public.event_registrations SET status = 'confirmed', gate = 'Puerta 3' WHERE id = 'b0000000-0000-0000-0000-000000000001';
+SET LOCAL ROLE authenticated;
 SELECT is((SELECT public.check_in_pass(' ' || (SELECT access_code FROM public.event_passes WHERE id = '90000000-0000-0000-0000-000000000001') || ' ') ->> 'already'), 'false', 'La directiva registra un ingreso por código');
+SELECT is((SELECT count(*)::int FROM public.registration_events WHERE event_type = 'checked_in'), 1, 'El primer ingreso queda en la bitácora');
 SELECT is((SELECT public.check_in_pass((SELECT access_code FROM public.event_passes WHERE id = '90000000-0000-0000-0000-000000000001')) ->> 'already'), 'true', 'Un segundo ingreso avisa que ya ingresó');
+SELECT is((SELECT public.check_in_pass((SELECT access_code FROM public.event_passes WHERE id = '90000000-0000-0000-0000-000000000001')) ->> 'gate'), 'Puerta 3', 'El check-in devuelve la puerta de la inscripción');
 SELECT is((SELECT public.check_in_pass('NOEXISTE') ->> 'error'), 'not_found', 'Un código inexistente no falla: responde not_found');
 
 -- Admin: cambia la configuración; los overrides van por RPC -------------------------------------------------------------

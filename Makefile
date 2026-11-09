@@ -1,4 +1,4 @@
-.PHONY: init db-reset db-setup db-clean db-seed test-db test-e2e test-load-k6 test-load-pgbench test-all
+.PHONY: init db-reset db-setup db-clean db-seed db-seed-staff functions-serve test-db test-e2e test-load-k6 test-load-pgbench test-all
 
 # Comando principal de inicialización para el nuevo desarrollador
 init:
@@ -33,6 +33,15 @@ db-seed: db-clean
 	@echo "Aplicando fixture de pruebas de carga y E2E..."
 	@PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f backend/tests/fixtures/seed_load_and_e2e.sql > /dev/null 2>&1 || \
 	echo "Aviso: No se pudo conectar directamente por psql; asegúrate de que Supabase esté iniciado."
+
+# Crea dos usuarios del staff (board y admin) para probar /intranet/open-day en local
+db-seed-staff:
+	@echo "Creando usuarios del staff de prueba (ver backend/tests/fixtures/seed_staff_dev.sql)..."
+	@PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f backend/tests/fixtures/seed_staff_dev.sql > /dev/null
+
+# Sirve las Edge Functions con backend/supabase/functions/.env (copia de .env.example)
+functions-serve:
+	cd backend && npx supabase functions serve --env-file supabase/functions/.env
 
 # Ejecuta las pruebas unitarias y E2E de base de datos con pgTAP
 test-db: db-clean
