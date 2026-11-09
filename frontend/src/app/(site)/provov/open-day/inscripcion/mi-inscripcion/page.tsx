@@ -17,11 +17,13 @@ import {
   OPEN_DAY_ROUTES,
   ROLE_LABELS,
   STATUS_LABELS,
+  STATUS_TONES,
 } from "@/lib/open-day/constants";
 import { fetchEvent, fetchMyRegistrations } from "@/lib/open-day/data";
 import {
   formatDateTime,
   formatEventDate,
+  formatGate,
   formatTime,
   formatTimeRange,
 } from "@/lib/open-day/format";
@@ -32,23 +34,10 @@ import type {
   RegistrationStatus,
   TourSession,
 } from "@/lib/open-day/types";
-import type { RelayColor } from "@/lib/relay";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Mi inscripción · Open Day",
-};
-
-const STATUS_TONES: Record<RegistrationStatus, RelayColor> = {
-  draft: "orange",
-  held: "orange",
-  reserved: "blue",
-  submitted: "blue",
-  docs_observed: "magenta",
-  confirmed: "green",
-  needs_reassignment: "magenta",
-  expired: "orange",
-  cancelled: "orange",
 };
 
 const CONTINUE_STATUSES = new Set<RegistrationStatus>([
@@ -212,9 +201,7 @@ function RegistrationCard({
               Ingreso
             </dt>
             <dd>
-              {registration.gate
-                ? `Puerta ${registration.gate}`
-                : "Puerta por confirmar"}
+              {formatGate(registration.gate)}
               {registration.arrivalAt &&
                 ` · ${formatTime(registration.arrivalAt)}`}
             </dd>

@@ -1,3 +1,4 @@
+import { toCsv } from "@/lib/csv";
 import { type PersonValues, personSchema } from "./schemas";
 import type { AttendeeRole, DocType } from "./types";
 
@@ -226,10 +227,6 @@ export function parsePeople(
   return { people, errors };
 }
 
-function csvCell(value: string) {
-  return /[",;\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-}
-
 /** Plantilla CSV (con BOM para que Excel respete las tildes) y dos filas de ejemplo. */
 export function peopleTemplateCsv(kind: "school" | "individual") {
   const header = COLUMNS.map((c) => c.header);
@@ -287,6 +284,5 @@ export function peopleTemplateCsv(kind: "school" | "individual") {
             "Madre",
           ],
         ];
-  const rows = [header, ...examples].map((row) => row.map(csvCell).join(";"));
-  return `﻿${rows.join("\r\n")}\r\n`;
+  return toCsv([header, ...examples]);
 }

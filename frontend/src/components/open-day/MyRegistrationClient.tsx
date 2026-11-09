@@ -80,10 +80,14 @@ export function ObservedDocuments({
   );
 }
 
-export function PrintButton() {
+export function PrintButton({
+  label = "Imprimir códigos",
+}: {
+  label?: string;
+}) {
   return (
     <Button onClick={() => window.print()} className="print:hidden">
-      Imprimir códigos
+      {label}
     </Button>
   );
 }

@@ -7,6 +7,7 @@ import { PlusIcon } from "@/components/site/Icons";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
+import { downloadCsv } from "@/lib/csv";
 import { DOC_TYPE_LABELS, ROLE_LABELS } from "@/lib/open-day/constants";
 import { isMinorOn } from "@/lib/open-day/format";
 import {
@@ -25,10 +26,14 @@ import {
 import type { OpenDayEvent, Registration } from "@/lib/open-day/types";
 import { Notice } from "./Notice";
 
+type SaveResult = { ok: true } | { ok: false; error: { message: string } };
+
 type PeopleEditorProps = {
   event: OpenDayEvent;
   registration: Registration;
   onSaved: () => Promise<unknown>;
+  /** Cómo se guarda la lista; por defecto `set_attendees` del dueño (el staff usa el override de admin). */
+  save?: (people: PersonValues[]) => Promise<SaveResult>;
 };
 
 const cellInput = cn(fieldClasses, "min-w-0 px-2.5 py-2 text-sm");
@@ -59,6 +64,7 @@ export function PeopleEditor({
   event,
   registration,
   onSaved,
+  save = (people) => setAttendees(registration.id, people),
 }: PeopleEditorProps) {
   const isSchool = registration.kind === "school";
   const schema = useMemo(
@@ -108,7 +114,7 @@ export function PeopleEditor({
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
     setSaved(false);
-    const result = await setAttendees(registration.id, values.people);
+    const result = await save(values.people);
     if (!result.ok) {
       setServerError(result.error.message);
       return;
@@ -443,15 +449,7 @@ function ImportPanel({
   const [result, setResult] = useState<ImportResult | null>(null);
 
   function downloadTemplate() {
-    const blob = new Blob([peopleTemplateCsv(kind)], {
-      type: "text/csv;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "plantilla-personas-open-day.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCsv("plantilla-personas-open-day.csv", peopleTemplateCsv(kind));
   }
 
   function apply(mode: "append" | "replace") {

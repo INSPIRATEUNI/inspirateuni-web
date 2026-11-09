@@ -23,6 +23,8 @@ export type CurrentUser = {
   primaryRole: UserRole | null;
   accessLevel: AccessLevel;
   isBoard: boolean;
+  /** Administrador del sistema: overrides y configuración del Open Day. */
+  isAdmin: boolean;
   /** Administrador, presidente y vice: gestionan tareas de todas las áreas. */
   canManageAllAreas: boolean;
 };
@@ -109,6 +111,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     primaryRole,
     accessLevel,
     isBoard: accessLevel === "admin" || accessLevel === "board",
+    isAdmin: accessLevel === "admin",
     canManageAllAreas: roles.some(
       (role) => role.isGlobal || role.accessLevel === "admin",
     ),

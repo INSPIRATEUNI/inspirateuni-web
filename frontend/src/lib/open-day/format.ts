@@ -42,6 +42,12 @@ export function formatTimeRange(startsAt: string, endsAt: string) {
   return `${formatTime(startsAt)} a ${formatTime(endsAt)}`;
 }
 
+/** "Puerta 3": el staff puede escribir la puerta con o sin la palabra. */
+export function formatGate(gate: string | null) {
+  if (!gate) return "Puerta por confirmar";
+  return /^puerta\b/i.test(gate.trim()) ? gate.trim() : `Puerta ${gate.trim()}`;
+}
+
 /** Edad cumplida en una fecha (ambas en ISO aaaa-mm-dd), igual que `age()` en Postgres. */
 export function ageOn(birthDate: string, onDate: string) {
   const [by, bm, bd] = birthDate.split("-").map(Number);

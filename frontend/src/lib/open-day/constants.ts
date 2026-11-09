@@ -1,3 +1,4 @@
+import type { RelayColor } from "@/lib/relay";
 import type {
   AttendeeRole,
   DocType,
@@ -58,6 +59,19 @@ export const STATUS_LABELS: Record<RegistrationStatus, string> = {
   needs_reassignment: "Requiere elegir otro recorrido",
   expired: "Vencida",
   cancelled: "Cancelada",
+};
+
+/** Color de la etiqueta de cada estado. */
+export const STATUS_TONES: Record<RegistrationStatus, RelayColor> = {
+  draft: "orange",
+  held: "orange",
+  reserved: "blue",
+  submitted: "blue",
+  docs_observed: "magenta",
+  confirmed: "green",
+  needs_reassignment: "magenta",
+  expired: "orange",
+  cancelled: "orange",
 };
 
 /** Estados en los que todavía se puede continuar el trámite. */

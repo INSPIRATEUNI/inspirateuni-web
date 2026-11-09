@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import {
+  CalendarIcon,
   CheckCircleIcon,
   ClipboardIcon,
   ClockIcon,
@@ -13,9 +14,11 @@ export type IntranetNavItem = {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   /** Solo para la directiva (board y admin). */
   boardOnly?: boolean;
+  /** Solo para admin. */
+  adminOnly?: boolean;
 };
 
-/** Secciones de la intranet; las rutas se crean en las issues 1.4.3 a 1.4.6. */
+/** Secciones de la intranet (issues 1.4.3 a 1.4.6 y 1.5.8). */
 export const intranetNav: IntranetNavItem[] = [
   { label: "Inicio", href: "/intranet", icon: HomeIcon },
   { label: "Mis tareas", href: "/intranet/tareas", icon: ClipboardIcon },
@@ -36,7 +39,24 @@ export const intranetNav: IntranetNavItem[] = [
     icon: CheckCircleIcon,
     boardOnly: true,
   },
+  {
+    label: "Open Day",
+    href: "/intranet/open-day",
+    icon: CalendarIcon,
+    boardOnly: true,
+  },
 ];
+
+/** Ítems visibles para el usuario según su nivel. */
+export function navFor(
+  items: IntranetNavItem[],
+  isBoard: boolean,
+  isAdmin: boolean,
+) {
+  return items.filter(
+    (item) => (isBoard || !item.boardOnly) && (isAdmin || !item.adminOnly),
+  );
+}
 
 /** Marca activo el ítem más específico que coincide con la ruta actual. */
 export function activeHref(pathname: string, items: IntranetNavItem[]) {
