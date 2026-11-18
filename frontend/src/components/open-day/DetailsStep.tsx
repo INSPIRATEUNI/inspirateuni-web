@@ -149,19 +149,27 @@ export function SchoolDetailsStep({
   );
 }
 
-/** Paso "Tus datos" de una persona libre (un solo visitante). */
+/** Paso "Tus datos" de una persona libre (uno o varios visitantes, sin contar apoderados). */
 export function IndividualDetailsStep({
   event,
   defaultEmail,
   onStarted,
 }: DetailsProps) {
+  const schema = useMemo(
+    () => individualDetailsSchema(event.maxVisitorsIndividual),
+    [event.maxVisitorsIndividual],
+  );
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<IndividualDetailsValues>({
-    resolver: zodResolver(individualDetailsSchema),
-    defaultValues: { contactName: "", contactEmail: defaultEmail },
+    resolver: zodResolver(schema),
+    defaultValues: {
+      contactName: "",
+      contactEmail: defaultEmail,
+      expectedVisitors: 1,
+    },
   });
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -171,7 +179,7 @@ export function IndividualDetailsStep({
       eventId: event.id,
       kind: "individual",
       schoolId: null,
-      expectedVisitors: 1,
+      expectedVisitors: values.expectedVisitors,
       contactName: values.contactName,
       contactEmail: values.contactEmail,
     });
@@ -213,6 +221,26 @@ export function IndividualDetailsStep({
         <FieldError
           id="ind-contact-email-error"
           message={errors.contactEmail?.message}
+        />
+      </Field>
+      <Field
+        id="ind-visitors"
+        label="¿Cuántas personas asistirán?"
+        hint={`Hasta ${event.maxVisitorsIndividual}, sin contar a los adultos que acompañan. Luego no podrás cambiar la cantidad.`}
+      >
+        <Input
+          id="ind-visitors"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={event.maxVisitorsIndividual}
+          aria-invalid={Boolean(errors.expectedVisitors)}
+          aria-describedby="ind-visitors-hint ind-visitors-error"
+          {...register("expectedVisitors", { valueAsNumber: true })}
+        />
+        <FieldError
+          id="ind-visitors-error"
+          message={errors.expectedVisitors?.message}
         />
       </Field>
       {serverError && (

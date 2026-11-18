@@ -40,6 +40,7 @@ export type OpenDayEvent = {
   maxFileMb: number;
   studentsPerChaperone: number;
   maxVisitorsPerRegistration: number | null;
+  maxVisitorsIndividual: number;
   maxAdultsPerRegistration: number | null;
   travelBufferMinutes: number;
 };

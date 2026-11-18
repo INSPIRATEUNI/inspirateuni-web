@@ -219,6 +219,13 @@ export function RegistrationWizard({
   const current = order.indexOf(currentId);
   const editable = status === "reserved";
 
+  const backButton = (target: ReservedPhase) =>
+    editable ? (
+      <Button variant="ghost" onClick={() => setPhase(target)}>
+        Atrás
+      </Button>
+    ) : null;
+
   const editButton = (target: ReservedPhase) =>
     editable ? (
       <button
@@ -330,7 +337,7 @@ export function RegistrationWizard({
     },
     {
       id: "people",
-      title: isSchool ? "Escolares y acompañantes" : "Visitante y acompañante",
+      title: isSchool ? "Escolares y acompañantes" : "Visitantes y acompañante",
       icon: <UsersIcon />,
       status: stepStatus(3, current),
       lockedHint: "Se habilita al confirmar los recorridos.",
@@ -366,7 +373,8 @@ export function RegistrationWizard({
             registration={registration}
             onChanged={reload}
           />
-          <div>
+          <div className="flex flex-wrap gap-3">
+            {backButton("people")}
             <Button
               disabled={!documentsComplete(event, registration)}
               onClick={() => setPhase(isSchool ? "logistics" : "submit")}
@@ -395,14 +403,17 @@ export function RegistrationWizard({
             icon: <CalendarIcon />,
             status: stepStatus(5, current),
             content: registration && (
-              <LogisticsStep
-                options={logisticsOptions}
-                registration={registration}
-                onSaved={async () => {
-                  await reload();
-                  setPhase("submit");
-                }}
-              />
+              <div className="grid gap-5">
+                <LogisticsStep
+                  options={logisticsOptions}
+                  registration={registration}
+                  onSaved={async () => {
+                    await reload();
+                    setPhase("submit");
+                  }}
+                />
+                <div>{backButton("documents")}</div>
+              </div>
             ),
             summary: registration && (
               <>
@@ -428,7 +439,10 @@ export function RegistrationWizard({
       icon: <CalendarIcon />,
       status: stepStatus(order.length - 1, current),
       content: registration && (
-        <SubmitStep registration={registration} onSubmitted={reload} />
+        <div className="grid gap-5">
+          <SubmitStep registration={registration} onSubmitted={reload} />
+          <div>{backButton(isSchool ? "logistics" : "documents")}</div>
+        </div>
       ),
     },
   ];

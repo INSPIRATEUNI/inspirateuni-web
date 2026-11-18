@@ -147,7 +147,11 @@ export function PeopleEditor({
           : []),
       ]
     : [
-        { label: "Visitante", value: `${visitors} de 1`, ok: visitors === 1 },
+        {
+          label: visitors === 1 ? "Visitante" : "Visitantes",
+          value: `${visitors} de ${registration.expectedVisitors}`,
+          ok: visitors === registration.expectedVisitors,
+        },
         ...(minorVisitor
           ? [
               {
@@ -172,7 +176,9 @@ export function PeopleEditor({
       <p className="text-muted-foreground">
         {isSchool
           ? `Registra a los ${registration.expectedVisitors} escolares y a los profesores que los acompañan (al menos uno por cada ${event.studentsPerChaperone} escolares). Los adultos deben ser mayores de edad el día del evento.`
-          : "Registra tus datos. Si eres menor de edad el día del evento, agrega a un adulto que te acompañe."}
+          : registration.expectedVisitors === 1
+            ? "Registra tus datos. Si eres menor de edad el día del evento, agrega a un adulto que te acompañe."
+            : `Registra a las ${registration.expectedVisitors} personas que asistirán. Si alguna es menor de edad el día del evento, agrega a un adulto que la acompañe; los adultos acompañantes no cuentan como visitantes.`}
       </p>
 
       <ul className="flex flex-wrap gap-3" aria-label="Resumen de la lista">
@@ -378,7 +384,7 @@ export function PeopleEditor({
           variant="ghost"
           size="sm"
           onClick={() => append(emptyPerson("visitor"))}
-          disabled={!isSchool && visitors >= 1}
+          disabled={!isSchool && visitors >= registration.expectedVisitors}
         >
           <PlusIcon className="size-4" />
           {isSchool ? "Agregar escolar" : "Agregar visitante"}

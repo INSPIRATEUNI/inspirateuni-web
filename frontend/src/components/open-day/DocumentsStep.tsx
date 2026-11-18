@@ -24,10 +24,12 @@ import { Notice } from "./Notice";
 const DOCUMENT_HINTS: Record<DocumentKind, string> = {
   school_consolidated:
     "Junta en un solo PDF las autorizaciones firmadas de todos los escolares y la carta de compromiso del colegio.",
-  consent: "Autorización para el uso de tus datos personales, firmada.",
-  commitment_letter: "Carta de compromiso de buena conducta, firmada.",
+  consent:
+    "Autorización para el uso de datos personales, firmada. Si inscribes a varias personas, junta todas en un solo PDF.",
+  commitment_letter:
+    "Carta de compromiso de buena conducta, firmada. Si inscribes a varias personas, junta todas en un solo PDF.",
   guardian_declaration:
-    "Declaración firmada por tu madre, padre o apoderado (eres menor de edad el día del evento).",
+    "Declaración firmada por la madre, padre o apoderado de cada menor de edad el día del evento (en un solo PDF).",
 };
 
 type DocumentsStepProps = {

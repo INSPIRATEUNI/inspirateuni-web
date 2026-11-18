@@ -37,6 +37,11 @@ const NUMBER_FIELDS: { name: FieldName; label: string; hint?: string }[] = [
     hint: "Vacío: sin tope.",
   },
   {
+    name: "maxVisitorsIndividual",
+    label: "Máximo de visitantes por persona libre",
+    hint: "Sin contar apoderados o adultos acompañantes.",
+  },
+  {
     name: "maxAdultsPerRegistration",
     label: "Máximo de adultos por inscripción",
     hint: "Vacío: sin tope.",
