@@ -57,8 +57,8 @@ SELECT matches(
 );
 SELECT throws_ok(
   $$ INSERT INTO public.event_registrations (event_id, owner_id, kind, expected_visitors, contact_name, contact_email)
-     VALUES ('eeeeeeee-0000-0000-0000-eeeeeeeeeeee', '22222222-2222-2222-2222-222222222222', 'individual', 2, 'X', 'x@correo.pe') $$,
-  '23514', NULL, 'Una inscripción individual tiene exactamente 1 visitante'
+     VALUES ('eeeeeeee-0000-0000-0000-eeeeeeeeeeee', '22222222-2222-2222-2222-222222222222', 'individual', 0, 'X', 'x@correo.pe') $$,
+  '23514', NULL, 'Toda inscripción exige al menos 1 visitante'
 );
 SELECT throws_ok(
   $$ INSERT INTO public.event_registrations (event_id, owner_id, kind, expected_visitors, contact_name, contact_email)
