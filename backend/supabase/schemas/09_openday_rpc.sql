@@ -328,8 +328,8 @@ begin
   if p_expected_visitors is null or p_expected_visitors < 1 then
     perform public._fail('attendees_invalid', 'Indica cuántos visitantes asistirán');
   end if;
-  if p_kind = 'individual' and p_expected_visitors <> 1 then
-    perform public._fail('attendees_invalid', 'Una inscripción individual es para un solo visitante');
+  if p_kind = 'individual' and p_expected_visitors > v_ev.max_visitors_individual then
+    perform public._fail('attendees_invalid', format('Una inscripción individual admite hasta %s visitantes', v_ev.max_visitors_individual));
   end if;
   if p_kind = 'school' then
     if v_school_id is null or not exists (select 1 from public.schools s where s.id = v_school_id) then
@@ -681,6 +681,8 @@ begin
     if v_ev.max_adults_per_registration is not null and v_adults > v_ev.max_adults_per_registration then
       perform public._fail('attendees_invalid', 'Superaste el máximo de adultos por inscripción');
     end if;
+  elsif v_visitors > v_ev.max_visitors_individual then
+    perform public._fail('attendees_invalid', format('Una inscripción individual admite hasta %s visitantes', v_ev.max_visitors_individual));
   elsif v_minor_visitor and v_adults < 1 then
     perform public._fail('attendees_invalid', 'Un visitante menor de edad debe ir con un adulto acompañante');
   end if;

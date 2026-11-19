@@ -25,13 +25,15 @@ export type ValidationDocument = {
   verifiedAt: string | null;
 };
 
+/** Puertas de ingreso disponibles (se elige una, no se escribe). */
+const GATES = ["Puerta 3", "Puerta 4", "Puerta 5"];
+
 type ValidationPanelProps = {
   registrationId: string;
   status: RegistrationStatus;
   documents: ValidationDocument[];
   /** Documentos obligatorios que aún no se subieron. */
   missing: DocumentKind[];
-  usedGates: string[];
   defaultGate: string;
   defaultArrival: string;
   defaultDeadline: string;
@@ -46,13 +48,16 @@ export function ValidationPanel({
   status,
   documents,
   missing,
-  usedGates,
   defaultGate,
   defaultArrival,
   defaultDeadline,
 }: ValidationPanelProps) {
   const [checks, setChecks] = useState<Record<string, string[]>>({});
   const [gate, setGate] = useState(defaultGate);
+  // Puertas fijas; si la inscripción ya tiene otra guardada, se conserva como opción
+  const gateOptions = [
+    ...new Set([...GATES, ...(defaultGate ? [defaultGate] : [])]),
+  ];
   const [arrival, setArrival] = useState(defaultArrival);
   const [deadline, setDeadline] = useState(defaultDeadline);
   const [notes, setNotes] = useState("");
@@ -204,19 +209,19 @@ export function ValidationPanel({
             </p>
             <label className="grid gap-1 text-sm font-semibold">
               Puerta de ingreso
-              <input
-                list="puertas-usadas"
+              <select
                 value={gate}
                 onChange={(e) => setGate(e.target.value)}
-                placeholder="Ej.: Puerta 3 (Av. Túpac Amaru)"
                 className={cn(fieldClasses, "py-2")}
                 disabled={!canConfirm}
-              />
-              <datalist id="puertas-usadas">
-                {usedGates.map((g) => (
-                  <option key={g} value={g} />
+              >
+                <option value="">Elige una puerta</option>
+                {gateOptions.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
                 ))}
-              </datalist>
+              </select>
             </label>
             <label className="grid gap-1 text-sm font-semibold">
               Hora de llegada (el día del evento)

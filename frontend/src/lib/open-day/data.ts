@@ -15,7 +15,7 @@ import type {
  */
 
 const EVENT_COLUMNS =
-  "id, name, event_date, venue, registration_open, registration_opens_at, registration_closes_at, docs_close_at, hold_minutes, reservation_hours, max_file_mb, students_per_chaperone, max_visitors_per_registration, max_adults_per_registration, travel_buffer_minutes";
+  "id, name, event_date, venue, registration_open, registration_opens_at, registration_closes_at, docs_close_at, hold_minutes, reservation_hours, max_file_mb, students_per_chaperone, max_visitors_per_registration, max_visitors_individual, max_adults_per_registration, travel_buffer_minutes";
 
 type EventRow = {
   id: string;
@@ -31,6 +31,7 @@ type EventRow = {
   max_file_mb: number;
   students_per_chaperone: number;
   max_visitors_per_registration: number | null;
+  max_visitors_individual: number;
   max_adults_per_registration: number | null;
   travel_buffer_minutes: number;
 };
@@ -50,6 +51,7 @@ function mapEvent(row: EventRow): OpenDayEvent {
     maxFileMb: row.max_file_mb,
     studentsPerChaperone: row.students_per_chaperone,
     maxVisitorsPerRegistration: row.max_visitors_per_registration,
+    maxVisitorsIndividual: row.max_visitors_individual,
     maxAdultsPerRegistration: row.max_adults_per_registration,
     travelBufferMinutes: row.travel_buffer_minutes,
   };

@@ -45,6 +45,7 @@ type EventRow = {
   max_file_mb: number;
   students_per_chaperone: number;
   max_visitors_per_registration: number | null;
+  max_visitors_individual: number;
   max_adults_per_registration: number | null;
   max_drafts_per_email: number;
   travel_buffer_minutes: number;
@@ -63,6 +64,7 @@ const NEW_EVENT: EventConfigInput = {
   maxFileMb: 20,
   studentsPerChaperone: 10,
   maxVisitorsPerRegistration: "",
+  maxVisitorsIndividual: 5,
   maxAdultsPerRegistration: "",
   maxDraftsPerEmail: 3,
   travelBufferMinutes: 15,
@@ -116,6 +118,7 @@ export default async function ConfigPage({
         maxFileMb: event.max_file_mb,
         studentsPerChaperone: event.students_per_chaperone,
         maxVisitorsPerRegistration: event.max_visitors_per_registration ?? "",
+        maxVisitorsIndividual: event.max_visitors_individual,
         maxAdultsPerRegistration: event.max_adults_per_registration ?? "",
         maxDraftsPerEmail: event.max_drafts_per_email,
         travelBufferMinutes: event.travel_buffer_minutes,

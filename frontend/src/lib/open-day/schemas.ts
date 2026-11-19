@@ -75,11 +75,24 @@ export const newSchoolSchema = z.object({
 });
 export type NewSchoolValues = z.infer<typeof newSchoolSchema>;
 
-export const individualDetailsSchema = z.object({
-  contactName,
-  contactEmail: email,
-});
-export type IndividualDetailsValues = z.infer<typeof individualDetailsSchema>;
+/** Paso "Tus datos" de una persona libre; `maxVisitors` es el tope del evento (sin contar apoderados). */
+export function individualDetailsSchema(maxVisitors: number) {
+  return z.object({
+    contactName,
+    contactEmail: email,
+    expectedVisitors: z
+      .number("Indica cuántas personas asistirán.")
+      .int("Usa un número entero.")
+      .min(1, "Debe asistir al menos una persona.")
+      .max(
+        maxVisitors,
+        `El máximo por inscripción es ${maxVisitors} ${maxVisitors === 1 ? "persona" : "personas"}.`,
+      ),
+  });
+}
+export type IndividualDetailsValues = z.infer<
+  ReturnType<typeof individualDetailsSchema>
+>;
 
 // Personas ----------------------------------------------------------------------------------------
 

@@ -28,7 +28,7 @@ export default async function LibresPage({
             <GradientText gradient="discover">por tu cuenta</GradientText>.
           </>
         }
-        lead="Para un solo visitante. Puedes cerrar la página y volver más tarde: guardamos tu avance."
+        lead="Para ti o para unas pocas personas que van juntas. Puedes cerrar la página y volver más tarde: guardamos tu avance."
       />
       {event && available ? (
         <RegistrationWizard

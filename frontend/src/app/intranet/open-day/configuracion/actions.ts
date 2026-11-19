@@ -55,6 +55,7 @@ export async function saveEvent(
     students_per_chaperone: v.studentsPerChaperone,
     max_visitors_per_registration:
       v.maxVisitorsPerRegistration === "" ? null : v.maxVisitorsPerRegistration,
+    max_visitors_individual: v.maxVisitorsIndividual,
     max_adults_per_registration:
       v.maxAdultsPerRegistration === "" ? null : v.maxAdultsPerRegistration,
     max_drafts_per_email: v.maxDraftsPerEmail,

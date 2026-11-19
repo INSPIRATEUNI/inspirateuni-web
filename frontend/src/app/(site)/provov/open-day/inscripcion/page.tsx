@@ -34,7 +34,7 @@ const options = [
   {
     href: OPEN_DAY_ROUTES.individuals,
     title: "Voy por mi cuenta",
-    text: "Para un solo visitante. Si eres menor de edad, te acompaña un adulto que también se registra.",
+    text: "Para ti o para unas pocas personas que van juntas. Si alguna es menor de edad, la acompaña un adulto que también se registra.",
     icon: <UsersIcon className="size-6" />,
     tone: "bg-blue-deep",
   },

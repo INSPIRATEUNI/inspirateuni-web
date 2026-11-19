@@ -52,8 +52,7 @@ create table public.event_registrations (
   accepted_terms_at timestamptz,
   terms_version text,
   created_at timestamptz not null default now(),
-  check ((kind = 'school') = (school_id is not null)),
-  check (kind <> 'individual' or expected_visitors = 1)
+  check ((kind = 'school') = (school_id is not null))
 );
 
 create index event_registrations_event_id_idx on public.event_registrations (event_id);

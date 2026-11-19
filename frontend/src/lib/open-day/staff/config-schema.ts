@@ -21,6 +21,7 @@ export const eventConfigSchema = z
     maxFileMb: z.coerce.number().int().min(1).max(50, "Máximo 50 MB."),
     studentsPerChaperone: z.coerce.number().int().min(1).max(100),
     maxVisitorsPerRegistration: optionalInt,
+    maxVisitorsIndividual: z.coerce.number().int().min(1).max(50),
     maxAdultsPerRegistration: optionalInt,
     maxDraftsPerEmail: z.coerce.number().int().min(1).max(20),
     travelBufferMinutes: z.coerce.number().int().min(0).max(120),

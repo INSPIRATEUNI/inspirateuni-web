@@ -2,18 +2,21 @@
  * Códigos de acceso del Open Day (Issue 1.5.6).
  *
  * Web app que llama la Edge Function `send-email` al confirmar una inscripción (o al cambiar su
- * lista de personas). Recibe los datos ya armados desde la BD, genera el PDF (una tarjeta con QR
- * por persona), guarda una copia en Drive y envía el correo con el PDF adjunto.
+ * lista de personas). Recibe los datos ya armados desde la BD, genera el PDF (una página por persona
+ * con QR y código de barras), guarda una copia en Drive y envía el correo con el PDF adjunto.
+ * Con TEMPLATE_DOC_ID usa la plantilla de Google Docs (template.gs); sin ella, o si la plantilla
+ * falla, usa el diseño en HTML de más abajo.
  * Devuelve el id del archivo de Drive; la Edge Function lo registra como
  * registration_documents.kind = 'credentials'.
  *
  * Propiedades del script (Configuración del proyecto > Propiedades del script):
  *   SHARED_SECRET    secreto compartido con la Edge Function (APPS_SCRIPT_SECRET). Largo y aleatorio.
  *   DRIVE_FOLDER_ID  carpeta (privada) donde se guardan las copias.
+ *   TEMPLATE_DOC_ID  opcional: id del Google Doc que sirve de plantilla (ver template.gs).
  *   REPLY_TO         opcional: correo al que responden los colegios.
  *
- * El QR contiene solo el código de acceso de 8 caracteres (event_passes.access_code), que es lo que
- * lee check_in_pass() en el ingreso.
+ * El QR y el código de barras (Code 128, barcode128.gs) contienen solo el código de acceso de 8
+ * caracteres (event_passes.access_code), que es lo que lee check_in_pass() en el ingreso.
  */
 
 var TZ = 'America/Lima';
@@ -119,6 +122,18 @@ function prune_(props) {
 // ---------------------------------------------------------------------------------------------
 
 function buildPdf_(data) {
+  if (templateDocId_()) {
+    try {
+      return buildTemplatePdf_(data);
+    } catch (err) {
+      // La plantilla puede estar mal armada o sin permisos: el colegio igual recibe sus códigos
+      console.error('Plantilla de Docs falló, se usa el diseño HTML: ' + (err && err.stack ? err.stack : err));
+    }
+  }
+  return buildHtmlPdf_(data);
+}
+
+function buildHtmlPdf_(data) {
   var reg = data.registration;
   var name = 'codigos_' + reg.reference_code + '_' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmm') + '.pdf';
   return HtmlService.createHtmlOutput(buildHtml_(data)).getAs(MimeType.PDF).setName(name);
@@ -152,7 +167,7 @@ function buildHtml_(data) {
     '.code { font-family: monospace; font-size: 11px; font-weight: bold; letter-spacing: 2px; text-align: center; }' +
     '</style></head><body>' +
     '<h1>' + esc_(data.event.name) + '</h1>' +
-    '<div class="muted">' + esc_(formatDate_(data.event.event_date + 'T12:00:00-05:00', 'EEEE d \'de\' MMMM yyyy')) +
+    '<div class="muted">' + esc_(spanishDate_(data.event.event_date + 'T12:00:00-05:00')) +
     (data.event.venue ? ' · ' + esc_(data.event.venue) : '') + '</div>' +
     '<div class="muted">' + esc_(reg.school || reg.contact_name) + ' · Código de referencia ' + esc_(reg.reference_code) + '</div>' +
     '<h2>Ingreso</h2>' +
@@ -188,11 +203,11 @@ function card_(person, reg, event) {
 }
 
 /** QR (GIF en data URI) con nivel de corrección M. El contenido es solo el código de acceso. */
-function qrDataUrl_(code) {
+function qrDataUrl_(code, cellSize) {
   var qr = qrcode(0, 'M');
   qr.addData(String(code));
   qr.make();
-  return qr.createDataURL(4, 2);
+  return qr.createDataURL(cellSize || 4, 2);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -230,9 +245,7 @@ function safeEqual_(a, b) {
 // Pruebas manuales (ejecutar desde el editor de Apps Script)
 // ---------------------------------------------------------------------------------------------
 
-/** Genera un PDF de ejemplo con N personas, lo guarda en DRIVE_FOLDER_ID y registra el tiempo. */
-function testGenerateSample() {
-  var n = 60;
+function sampleData_(n) {
   var alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
   var people = [];
   for (var i = 1; i <= n; i++) {
@@ -243,15 +256,34 @@ function testGenerateSample() {
       role: i === 1 ? 'chaperone' : 'visitor', relationship: i === 1 ? 'Docente' : null, access_code: code
     });
   }
-  var data = {
+  return {
     registration: { reference_code: 'OD-PRUEBA', gate: 'Puerta 3', arrival_at: '2026-12-05T13:30:00-05:00', school: 'I.E. de Prueba', contact_name: 'Responsable' },
     event: { name: 'Open Day UNI', event_date: '2026-12-05', venue: 'Campus UNI' },
-    tours: [{ faculty: 'Facultad de Ciencias', starts_at: '2026-12-05T14:00:00-05:00', ends_at: '2026-12-05T15:00:00-05:00', meeting_point: 'Hall central' }],
+    tours: [
+      { faculty: 'Facultad de Ciencias', starts_at: '2026-12-05T14:00:00-05:00', ends_at: '2026-12-05T15:00:00-05:00', meeting_point: 'Hall central' },
+      { faculty: 'Facultad de Ingeniería Civil', starts_at: '2026-12-05T15:30:00-05:00', ends_at: '2026-12-05T16:30:00-05:00', meeting_point: '' }
+    ],
     people: people
   };
+}
+
+/** PDF de ejemplo con el diseño HTML (respaldo) para N personas; guarda en DRIVE_FOLDER_ID y registra el tiempo. */
+function testGenerateSample() {
+  var n = 60;
   var t0 = Date.now();
-  var file = DriveApp.getFolderById(prop_('DRIVE_FOLDER_ID')).createFile(buildPdf_(data));
-  Logger.log('PDF de ' + n + ' tarjetas en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s, ' +
+  var file = DriveApp.getFolderById(prop_('DRIVE_FOLDER_ID')).createFile(buildHtmlPdf_(sampleData_(n)));
+  Logger.log('PDF HTML de ' + n + ' tarjetas en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s, ' +
     Math.round(file.getSize() / 1024) + ' KB: ' + file.getUrl());
   Logger.log('Revisa que los QR aparezcan y se escaneen antes de desplegar.');
+}
+
+/** PDF de ejemplo con la plantilla de Docs (TEMPLATE_DOC_ID): una página por persona. Mide el tiempo. */
+function testGenerateTemplateSample() {
+  if (!templateDocId_()) throw new Error('Falta TEMPLATE_DOC_ID. Ejecuta createTemplateDoc() primero.');
+  var n = 33; // un colegio típico: 30 escolares y 3 acompañantes
+  var t0 = Date.now();
+  var file = DriveApp.getFolderById(prop_('DRIVE_FOLDER_ID')).createFile(buildTemplatePdf_(sampleData_(n)));
+  Logger.log('PDF de plantilla con ' + n + ' páginas en ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s (límite 360 s), ' +
+    Math.round(file.getSize() / 1024) + ' KB: ' + file.getUrl());
+  Logger.log('Comprueba que cada página tenga sus datos, el QR y las barras, y que ambos se escaneen.');
 }

@@ -30,10 +30,7 @@ import {
   isMinorOn,
 } from "@/lib/open-day/format";
 import { toLimaInput, toLimaTime } from "@/lib/open-day/staff/dates";
-import {
-  fetchRegistrationExtras,
-  fetchUsedGates,
-} from "@/lib/open-day/staff/queries";
+import { fetchRegistrationExtras } from "@/lib/open-day/staff/queries";
 import type { DocumentKind } from "@/lib/open-day/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -85,7 +82,7 @@ export default async function RegistrationDetailPage({
   const registration = await fetchRegistration(supabase, id);
   if (!registration) notFound();
 
-  const [event, extras, usedGates] = await Promise.all([
+  const [event, extras] = await Promise.all([
     fetchEvent(supabase, registration.eventId),
     fetchRegistrationExtras(
       supabase,
@@ -93,7 +90,6 @@ export default async function RegistrationDetailPage({
       registration.eventId,
       registration.attendees.map((a) => a.participantId),
     ),
-    fetchUsedGates(supabase, registration.eventId),
   ]);
   if (!event) notFound();
 
@@ -206,7 +202,6 @@ export default async function RegistrationDetailPage({
             status={registration.status}
             documents={validationDocs}
             missing={missing}
-            usedGates={usedGates}
             defaultGate={registration.gate ?? ""}
             defaultArrival={defaultArrival}
             defaultDeadline={defaultDeadline}
