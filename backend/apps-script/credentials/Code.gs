@@ -36,6 +36,7 @@ function doPost(e) {
     if (!safeEqual_(String(req.secret || ''), prop_('SHARED_SECRET'))) {
       return json_({ ok: false, error: 'unauthorized', permanent: true });
     }
+    if (req.action === 'save_document') return json_(saveDocument_(req));
     if (req.action !== 'send_credentials') {
       return json_({ ok: false, error: 'acción desconocida', permanent: true });
     }
