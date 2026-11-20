@@ -154,6 +154,7 @@ export default async function RegistrationDetailPage({
           <p className="mt-1 text-muted-foreground">
             {registration.kind === "school" ? "Colegio" : "Persona libre"} ·{" "}
             {registration.contactName} · {registration.contactEmail}
+            {registration.contactPhone ? ` · ${registration.contactPhone}` : ""}
           </p>
         </div>
         <Tag tone={STATUS_TONES[registration.status]}>

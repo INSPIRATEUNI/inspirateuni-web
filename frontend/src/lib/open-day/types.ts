@@ -128,6 +128,7 @@ export type Registration = {
   arrivalAt: string | null;
   contactName: string;
   contactEmail: string;
+  contactPhone: string | null;
   school: { id: string; name: string; district: string | null } | null;
   enrollments: Enrollment[];
   attendees: Attendee[];

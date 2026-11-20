@@ -61,6 +61,7 @@ export type InboxRow = {
   expectedVisitors: number;
   contactName: string;
   contactEmail: string;
+  contactPhone: string | null;
   schoolName: string | null;
   submittedAt: string | null;
   docsDeadline: string | null;
@@ -75,6 +76,7 @@ type InboxDbRow = {
   expected_visitors: number;
   contact_name: string;
   contact_email: string;
+  contact_phone: string | null;
   submitted_at: string | null;
   docs_deadline: string | null;
   created_at: string;
@@ -115,7 +117,7 @@ export async function fetchInbox(
   let request = supabase
     .from("event_registrations")
     .select(
-      "id, reference_code, kind, status, expected_visitors, contact_name, contact_email, submitted_at, docs_deadline, created_at, school:schools(name)",
+      "id, reference_code, kind, status, expected_visitors, contact_name, contact_email, contact_phone, submitted_at, docs_deadline, created_at, school:schools(name)",
       { count: "exact" },
     )
     .eq("event_id", eventId)
@@ -165,6 +167,7 @@ export async function fetchInbox(
       expectedVisitors: row.expected_visitors,
       contactName: row.contact_name,
       contactEmail: row.contact_email,
+      contactPhone: row.contact_phone,
       schoolName: row.school?.name ?? null,
       submittedAt: row.submitted_at,
       docsDeadline: row.docs_deadline,
@@ -607,6 +610,7 @@ export type SessionGroup = {
   schoolName: string | null;
   contactName: string;
   contactEmail: string;
+  contactPhone: string | null;
   visitors: number;
   adults: number;
   seats: number;
@@ -628,6 +632,7 @@ export async function fetchSessionRoster(
         status: RegistrationStatus;
         contact_name: string;
         contact_email: string;
+        contact_phone: string | null;
         school: { name: string } | null;
         attendees: { attendee_role: AttendeeRole }[];
       } | null;
@@ -635,7 +640,7 @@ export async function fetchSessionRoster(
       supabase
         .from("tour_enrollments")
         .select(
-          "session_id, seats, registration:event_registrations!inner(event_id, reference_code, kind, status, contact_name, contact_email, school:schools(name), attendees:event_attendees(attendee_role))",
+          "session_id, seats, registration:event_registrations!inner(event_id, reference_code, kind, status, contact_name, contact_email, contact_phone, school:schools(name), attendees:event_attendees(attendee_role))",
         )
         .eq("registration.event_id", eventId)
         .eq("registration.status", "confirmed")
@@ -656,6 +661,7 @@ export async function fetchSessionRoster(
       schoolName: e.registration.school?.name ?? null,
       contactName: e.registration.contact_name,
       contactEmail: e.registration.contact_email,
+      contactPhone: e.registration.contact_phone,
       visitors,
       adults: e.registration.attendees.length - visitors,
       seats: e.seats,

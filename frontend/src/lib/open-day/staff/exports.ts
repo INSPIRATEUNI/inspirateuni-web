@@ -103,6 +103,7 @@ export async function buildExport(
         "Adultos",
         "Cupos",
         "Correo del contacto",
+        "Celular del contacto",
       ],
       sections: roster.map(({ session, groups }) => ({
         title: `${session.facultyName} · ${formatTimeRange(session.startsAt, session.endsAt)}`,
@@ -120,6 +121,7 @@ export async function buildExport(
           String(g.adults),
           String(g.seats),
           g.contactEmail,
+          g.contactPhone ?? "",
         ]),
       })),
     };

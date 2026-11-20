@@ -188,6 +188,7 @@ export default async function InboxPage({
                       {KIND_LABELS[row.kind]}
                       {row.schoolName ? ` · ${row.contactName}` : ""} ·{" "}
                       {row.contactEmail}
+                      {row.contactPhone ? ` · ${row.contactPhone}` : ""}
                     </p>
                   </td>
                   <td className="px-4 py-3 text-right align-top tabular-nums">

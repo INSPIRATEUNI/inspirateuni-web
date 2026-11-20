@@ -42,12 +42,20 @@ const contactName = z
   .min(3, "Escribe tu nombre completo.")
   .max(120, "El nombre puede tener hasta 120 caracteres.");
 
+const contactPhone = z
+  .string()
+  .trim()
+  .min(1, "Escribe un celular de contacto.")
+  .max(20, "El celular puede tener hasta 20 caracteres.")
+  .regex(/^\+?[\d\s-]{6,}$/, "Celular no válido.");
+
 /** Paso "Datos y cantidades" del colegio; `maxVisitors` viene del evento. */
 export function schoolDetailsSchema(maxVisitors: number | null) {
   return z.object({
     schoolId: z.guid("Elige tu colegio o regístralo."),
     contactName,
     contactEmail: email,
+    contactPhone,
     expectedVisitors: z
       .number("Indica cuántos escolares irán.")
       .int("Usa un número entero.")
@@ -80,6 +88,7 @@ export function individualDetailsSchema(maxVisitors: number) {
   return z.object({
     contactName,
     contactEmail: email,
+    contactPhone,
     expectedVisitors: z
       .number("Indica cuántas personas asistirán.")
       .int("Usa un número entero.")
