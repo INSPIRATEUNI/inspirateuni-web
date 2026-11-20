@@ -212,8 +212,10 @@ function DocumentUpload({
             </p>
           )}
           {observed && (
-            <p className="mt-1 text-sm font-semibold text-orange-ink">
-              Observación: {current.observation}
+            <p className="mt-1 whitespace-pre-line text-sm font-semibold text-orange-ink">
+              Comentario:
+              <br />
+              {current.observation}
             </p>
           )}
         </div>

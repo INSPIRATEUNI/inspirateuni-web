@@ -206,7 +206,7 @@ export function peopleSchema(options: {
             code: "custom",
             path: ["people", index, "birthDate"],
             message:
-              "Los acompañantes deben ser mayores de edad el día del evento.",
+              "Los acompañantes o tutores deben ser mayores de edad el día del evento.",
           });
         }
         if (options.kind === "individual" && person.role === "chaperone") {
