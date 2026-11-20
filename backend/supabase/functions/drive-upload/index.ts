@@ -277,6 +277,47 @@ async function downloadDocument(req: Request, body: Record<string, unknown>) {
   });
 }
 
+/** El dueño de una inscripción confirmada descarga su PDF de códigos (el último generado). */
+async function downloadCredentials(req: Request, body: Record<string, unknown>) {
+  const { user, admin } = await authenticate(req);
+  const registrationId = parseId(body.registration_id, "la inscripción");
+
+  // La RLS devuelve vacío si la inscripción es de otra persona
+  const { data: registration, error: regError } = await user
+    .from("event_registrations")
+    .select("id, status")
+    .eq("id", registrationId)
+    .maybeSingle<{ id: string; status: string }>();
+  if (regError) throw regError;
+  if (!registration) throw new HttpError(404, "not_found", "No se encontró la inscripción");
+  if (registration.status !== "confirmed") {
+    throw new HttpError(409, "bad_state", "Los códigos estarán disponibles cuando confirmemos tu inscripción");
+  }
+
+  const { data: doc, error } = await admin
+    .from("registration_documents")
+    .select("id, drive_file_id, file_name")
+    .eq("registration_id", registrationId)
+    .eq("kind", "credentials")
+    .is("superseded_at", null)
+    .order("uploaded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!doc) throw new HttpError(404, "not_found", "Tu PDF de códigos aún se está generando");
+
+  const upstream = await storeFor(doc.drive_file_id, admin).download(doc.drive_file_id);
+  return new Response(upstream.body, {
+    headers: {
+      ...corsHeaders(req),
+      "Content-Type": PDF,
+      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(doc.file_name)}`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   try {
@@ -291,6 +332,8 @@ Deno.serve(async (req) => {
         return await finalize(req, body);
       case "download":
         return await downloadDocument(req, body);
+      case "download_credentials":
+        return await downloadCredentials(req, body);
       default:
         throw new HttpError(400, "invalid_request", "Acción desconocida");
     }

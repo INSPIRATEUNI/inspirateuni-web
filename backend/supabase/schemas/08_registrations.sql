@@ -61,10 +61,12 @@ create index event_registrations_owner_id_idx on public.event_registrations (own
 create index event_registrations_school_id_idx on public.event_registrations (school_id);
 create index event_registrations_status_idx on public.event_registrations (status);
 
--- Un colegio tiene una sola inscripción viva por evento
-create unique index event_registrations_school_event_idx
+-- Un colegio puede tener varias inscripciones por evento (cada una con tope de visitantes): quien
+-- quiere llevar más escolares de los permitidos crea otra. Los visitantes y acompañantes siguen
+-- siendo únicos por evento (índices de event_attendees).
+create index event_registrations_event_school_idx
   on public.event_registrations (event_id, school_id)
-  where school_id is not null and status not in ('expired', 'cancelled');
+  where school_id is not null;
 
 comment on table public.event_registrations is 'Trámite de inscripción al Open Day (colegio o persona libre). El dueño no escribe directo: todo pasa por RPC.';
 comment on column public.event_registrations.reference_code is 'Código corto para consultas con el staff (p. ej. OD-7K3F9). No es una credencial.';

@@ -360,15 +360,10 @@ begin
     perform public._fail('too_many_drafts', 'Ya tienes demasiadas inscripciones en curso con este correo');
   end if;
 
-  begin
-    insert into public.event_registrations (event_id, school_id, owner_id, kind, expected_visitors, contact_name, contact_email, contact_phone)
-    values (p_event_id, v_school_id, v_uid, p_kind, p_expected_visitors, btrim(p_contact_name), btrim(p_contact_email),
-            nullif(btrim(coalesce(p_contact_phone, '')), ''))
-    returning * into v_reg;
-  exception
-    when unique_violation then
-      perform public._fail('school_taken', 'Este colegio ya tiene una inscripción para el evento');
-  end;
+  insert into public.event_registrations (event_id, school_id, owner_id, kind, expected_visitors, contact_name, contact_email, contact_phone)
+  values (p_event_id, v_school_id, v_uid, p_kind, p_expected_visitors, btrim(p_contact_name), btrim(p_contact_email),
+          nullif(btrim(coalesce(p_contact_phone, '')), ''))
+  returning * into v_reg;
 
   perform public._log_registration_event(v_reg.id, 'created', null, 'draft');
   return jsonb_build_object('id', v_reg.id, 'reference_code', v_reg.reference_code);
