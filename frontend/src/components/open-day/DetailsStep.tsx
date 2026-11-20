@@ -44,6 +44,7 @@ export function SchoolDetailsStep({
       schoolId: "",
       contactName: "",
       contactEmail: defaultEmail,
+      contactPhone: "",
       expectedVisitors: Number.NaN,
     },
   });
@@ -59,6 +60,7 @@ export function SchoolDetailsStep({
       expectedVisitors: values.expectedVisitors,
       contactName: values.contactName,
       contactEmail: values.contactEmail,
+      contactPhone: values.contactPhone,
     });
     if (!result.ok) {
       setServerError(result.error.message);
@@ -135,6 +137,21 @@ export function SchoolDetailsStep({
           message={errors.contactEmail?.message}
         />
       </Field>
+      <Field id="school-contact-phone" label="Celular de contacto">
+        <Input
+          id="school-contact-phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          aria-invalid={Boolean(errors.contactPhone)}
+          aria-describedby="school-contact-phone-error"
+          {...register("contactPhone")}
+        />
+        <FieldError
+          id="school-contact-phone-error"
+          message={errors.contactPhone?.message}
+        />
+      </Field>
       {serverError && (
         <Notice tone="error" className="sm:col-span-2">
           {serverError}
@@ -168,6 +185,7 @@ export function IndividualDetailsStep({
     defaultValues: {
       contactName: "",
       contactEmail: defaultEmail,
+      contactPhone: "",
       expectedVisitors: 1,
     },
   });
@@ -182,6 +200,7 @@ export function IndividualDetailsStep({
       expectedVisitors: values.expectedVisitors,
       contactName: values.contactName,
       contactEmail: values.contactEmail,
+      contactPhone: values.contactPhone,
     });
     if (!result.ok) {
       setServerError(result.error.message);
@@ -241,6 +260,21 @@ export function IndividualDetailsStep({
         <FieldError
           id="ind-visitors-error"
           message={errors.expectedVisitors?.message}
+        />
+      </Field>
+      <Field id="ind-contact-phone" label="Celular de contacto">
+        <Input
+          id="ind-contact-phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          aria-invalid={Boolean(errors.contactPhone)}
+          aria-describedby="ind-contact-phone-error"
+          {...register("contactPhone")}
+        />
+        <FieldError
+          id="ind-contact-phone-error"
+          message={errors.contactPhone?.message}
         />
       </Field>
       {serverError && (

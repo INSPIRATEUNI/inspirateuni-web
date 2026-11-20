@@ -52,6 +52,7 @@ export function startRegistration(input: {
   expectedVisitors: number;
   contactName: string;
   contactEmail: string;
+  contactPhone: string;
 }) {
   return call<{ id: string; reference_code: string }>("start_registration", {
     p_event_id: input.eventId,
@@ -60,6 +61,7 @@ export function startRegistration(input: {
     p_expected_visitors: input.expectedVisitors,
     p_contact_name: input.contactName,
     p_contact_email: input.contactEmail,
+    p_contact_phone: input.contactPhone,
   });
 }
 
