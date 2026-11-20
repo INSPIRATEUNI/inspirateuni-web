@@ -71,15 +71,27 @@ export function DocumentsStep({
   return (
     <div className="grid gap-6">
       {!onlyObserved && templates.length > 0 && (
-        <section aria-labelledby="templates-title" className="grid gap-3">
-          <h3 id="templates-title" className="font-display text-lg font-bold">
-            Plantillas para descargar
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Descárgalas, imprímelas y fírmalas.
+        <section
+          aria-labelledby="templates-title"
+          className="grid gap-4 rounded-lg border-2 border-orange bg-tint-orange p-5 shadow-soft"
+        >
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-widest text-orange-ink">
+              Paso 1 · Descarga y firma
+            </p>
+            <h3
+              id="templates-title"
+              className="mt-1 font-display text-xl font-bold"
+            >
+              Descarga primero estas plantillas
+            </h3>
+          </div>
+          <p className="font-semibold">
+            Imprímelas, fírmalas
             {registration.kind === "school"
-              ? " Luego escanea todo en un solo PDF."
-              : " Luego escanea cada una en PDF."}
+              ? " y escanea todo en un solo PDF."
+              : " y escanea cada una en PDF."}{" "}
+            Después súbelas aquí abajo.
           </p>
           <ul className="flex flex-wrap gap-3">
             {templates
@@ -95,10 +107,10 @@ export function DocumentsStep({
                     href={driveDownloadUrl(template.driveFileId)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-spark"
                   >
-                    <ClipboardIcon className="size-4" />
-                    {DOCUMENT_LABELS[template.kind]} (v{template.version})
+                    <ClipboardIcon className="size-5" />
+                    Descargar {DOCUMENT_LABELS[template.kind].toLowerCase()}
                   </a>
                 </li>
               ))}
@@ -212,8 +224,10 @@ function DocumentUpload({
             </p>
           )}
           {observed && (
-            <p className="mt-1 text-sm font-semibold text-orange-ink">
-              Observación: {current.observation}
+            <p className="mt-1 whitespace-pre-line text-sm font-semibold text-orange-ink">
+              Comentario:
+              <br />
+              {current.observation}
             </p>
           )}
         </div>

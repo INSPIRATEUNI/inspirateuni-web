@@ -384,7 +384,11 @@ export default async function RegistrationDetailPage({
                     {formatDateTime(entry.createdAt)} · {entry.actorName}
                   </p>
                   {entry.reason && (
-                    <p className="mt-1 whitespace-pre-line">{entry.reason}</p>
+                    <p className="mt-1 whitespace-pre-line">
+                      <span className="font-semibold">Comentario:</span>
+                      <br />
+                      {entry.reason}
+                    </p>
                   )}
                 </li>
               ))}

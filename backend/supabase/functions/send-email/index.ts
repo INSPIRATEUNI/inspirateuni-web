@@ -134,7 +134,7 @@ async function sendWithCredentials(
 }
 
 async function deliver(admin: SupabaseClient, row: OutboxRow): Promise<Outcome> {
-  const rendered = render(row.template, row.payload ?? {}, env("SITE_URL").replace(/\/$/, ""));
+  const rendered = render(row.template, row.payload ?? {}, env("SITE_URL").replace(/\/$/, ""), row.registration_id);
   if (!rendered) return { ok: false, error: `Plantilla desconocida: ${row.template}`, permanent: true };
 
   const { subject, html, text } = rendered;

@@ -279,6 +279,15 @@ async function uploadToDrive(
   return fileId;
 }
 
+/** PDF de códigos (el de tu plantilla) de una inscripción confirmada; lo pide su dueño. */
+export async function getCredentialsPdfUrl(registrationId: string) {
+  const response = await callDriveFunction({
+    action: "download_credentials",
+    registration_id: registrationId,
+  });
+  return URL.createObjectURL(await response.blob());
+}
+
 export async function getRegistrationDocumentUrl(documentId: string) {
   const response = await callDriveFunction({
     action: "download",

@@ -90,8 +90,8 @@ export function SchoolDetailsStep({
         label="¿Cuántos escolares irán?"
         hint={
           event.maxVisitorsPerRegistration
-            ? `Hasta ${event.maxVisitorsPerRegistration} por colegio. Luego no podrás cambiar la cantidad.`
-            : "Luego no podrás cambiar la cantidad."
+            ? `Hasta ${event.maxVisitorsPerRegistration} por inscripción. Luego no podrás cambiar la cantidad. Si quieres inscribir a más escolares de los permitidos, crea otra inscripción y elige el mismo colegio.`
+            : "Luego no podrás cambiar la cantidad. Si quieres inscribir a más escolares, crea otra inscripción y elige el mismo colegio."
         }
       >
         <Input

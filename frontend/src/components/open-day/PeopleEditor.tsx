@@ -139,7 +139,7 @@ export function PeopleEditor({
         ...(event.maxAdultsPerRegistration
           ? [
               {
-                label: "Adultos",
+                label: "Acompañantes o tutores",
                 value: `${adults} de ${event.maxAdultsPerRegistration} como máximo`,
                 ok: adults <= event.maxAdultsPerRegistration,
               },
@@ -155,7 +155,7 @@ export function PeopleEditor({
         ...(minorVisitor
           ? [
               {
-                label: "Adulto acompañante",
+                label: "Acompañante o tutor",
                 value: adults > 0 ? "Registrado" : "Obligatorio para menores",
                 ok: adults > 0,
               },
@@ -175,10 +175,10 @@ export function PeopleEditor({
     <form onSubmit={onSubmit} noValidate className="grid gap-6">
       <p className="text-muted-foreground">
         {isSchool
-          ? `Registra a los ${registration.expectedVisitors} escolares y a los profesores que los acompañan (al menos uno por cada ${event.studentsPerChaperone} escolares). Los adultos deben ser mayores de edad el día del evento.`
+          ? `Registra a los ${registration.expectedVisitors} escolares y a los profesores que los acompañan (al menos uno por cada ${event.studentsPerChaperone} escolares). Los acompañantes o tutores deben ser mayores de edad el día del evento.`
           : registration.expectedVisitors === 1
-            ? "Registra tus datos. Si eres menor de edad el día del evento, agrega a un adulto que te acompañe."
-            : `Registra a las ${registration.expectedVisitors} personas que asistirán. Si alguna es menor de edad el día del evento, agrega a un adulto que la acompañe; los adultos acompañantes no cuentan como visitantes.`}
+            ? "Registra tus datos. Si eres menor de edad el día del evento, agrega a un acompañante o tutor mayor de edad."
+            : `Registra a las ${registration.expectedVisitors} personas que asistirán. Si alguna es menor de edad el día del evento, agrega a un acompañante o tutor mayor de edad; los acompañantes y tutores no cuentan como visitantes.`}
       </p>
 
       <ul className="flex flex-wrap gap-3" aria-label="Resumen de la lista">

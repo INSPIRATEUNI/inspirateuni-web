@@ -76,9 +76,9 @@ INSERT INTO ids SELECT 'r1', (public.start_registration('eeeeeeee-0000-0000-0000
 SELECT is((SELECT status FROM public.event_registrations WHERE id = (SELECT id FROM ids WHERE k = 'r1')), 'draft'::public.registration_status, 'La inscripción nace en draft');
 SELECT is((SELECT owner_id FROM public.event_registrations WHERE id = (SELECT id FROM ids WHERE k = 'r1')), '11111111-1111-1111-1111-111111111111'::uuid, 'El dueño es auth.uid()');
 
-SELECT throws_ok(
+SELECT lives_ok(
   $$ SELECT public.start_registration('eeeeeeee-0000-0000-0000-eeeeeeeeeeee', 'school', 'a0000000-0000-0000-0000-000000000001', 5, 'Otro', 'otro@colegio.pe') $$,
-  'P0001', 'Este colegio ya tiene una inscripción para el evento', 'Un colegio no se inscribe dos veces'
+  'Un colegio puede crear otra inscripción para llevar más escolares'
 );
 SELECT throws_ok(
   $$ SELECT public.start_registration('eeeeeeee-0000-0000-0000-eeeeeeeeeeee', 'school', 'a0000000-0000-0000-0000-000000000002', 200, 'Resp. Dos', 'dos@colegio.pe') $$,

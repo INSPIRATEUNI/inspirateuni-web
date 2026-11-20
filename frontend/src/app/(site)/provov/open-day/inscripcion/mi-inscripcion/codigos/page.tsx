@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { PrintButton } from "@/components/open-day/MyRegistrationClient";
+import { CodesPdf } from "@/components/open-day/CodesPdf";
 import { Notice } from "@/components/open-day/Notice";
 import { PageIntro } from "@/components/open-day/PageIntro";
 import { Button } from "@/components/ui/Button";
@@ -61,7 +61,11 @@ export default async function CodigosPage({
         .map((item) => ({ ...item, registration, event }));
     }),
   );
-  const items = cards.flat();
+  const groups = registrations.map((registration, index) => ({
+    registration,
+    items: cards[index],
+  }));
+  const hasItems = groups.some((g) => g.items.length > 0);
 
   return (
     <>
@@ -74,10 +78,10 @@ export default async function CodigosPage({
             <GradientText gradient="discover">acceso</GradientText>.
           </>
         }
-        lead="Cada persona muestra su código al ingresar. Imprime esta página o guárdala en el celular."
+        lead="Cada persona muestra su código al ingresar. Descarga el PDF o guárdalo en el celular."
       />
 
-      {items.length === 0 ? (
+      {!hasItems ? (
         <div className="grid gap-5">
           <Notice title="Aún no hay códigos">
             Los códigos aparecen cuando confirmamos tu inscripción. Te
@@ -90,42 +94,52 @@ export default async function CodigosPage({
           </div>
         </div>
       ) : (
-        <div className="grid gap-6">
-          <div className="print:hidden">
-            <PrintButton />
-          </div>
-          <ul className="grid gap-4 sm:grid-cols-2 print:grid-cols-2 print:gap-3">
-            {items.map(({ pass, attendee, registration, event }) => (
-              <li
-                key={pass.id}
-                className="grid gap-2 rounded-lg border-2 border-dashed border-border bg-surface p-5 break-inside-avoid print:rounded-none print:p-4"
+        <div className="grid gap-10">
+          {groups
+            .filter((g) => g.items.length > 0)
+            .map(({ registration, items }) => (
+              <CodesPdf
+                key={registration.id}
+                registrationId={registration.id}
+                referenceCode={registration.referenceCode}
               >
-                <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
-                  {event?.name ?? "Open Day UNI"}
-                  {event && ` · ${formatEventDate(event.eventDate)}`}
-                </p>
-                <p className="text-lg font-bold">
-                  {attendee?.firstName} {attendee?.lastName}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {attendee && ROLE_LABELS[attendee.role]}
-                  {registration.school && ` · ${registration.school.name}`}
-                </p>
-                <p className="font-mono text-3xl font-bold tracking-[0.2em]">
-                  <span className="sr-only">
-                    Código {pass.accessCode.split("").join(" ")}
-                  </span>
-                  <span aria-hidden="true">{groupCode(pass.accessCode)}</span>
-                </p>
-                <p className="text-sm">
-                  {formatGate(registration.gate)}
-                  {registration.arrivalAt &&
-                    ` · Llegada ${formatTime(registration.arrivalAt)}`}
-                  {` · ${registration.referenceCode}`}
-                </p>
-              </li>
+                <ul className="grid gap-4 sm:grid-cols-2 print:grid-cols-2 print:gap-3">
+                  {items.map(({ pass, attendee, registration, event }) => (
+                    <li
+                      key={pass.id}
+                      className="grid gap-2 rounded-lg border-2 border-dashed border-border bg-surface p-5 break-inside-avoid print:rounded-none print:p-4"
+                    >
+                      <p className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">
+                        {event?.name ?? "Open Day UNI"}
+                        {event && ` · ${formatEventDate(event.eventDate)}`}
+                      </p>
+                      <p className="text-lg font-bold">
+                        {attendee?.firstName} {attendee?.lastName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {attendee && ROLE_LABELS[attendee.role]}
+                        {registration.school &&
+                          ` · ${registration.school.name}`}
+                      </p>
+                      <p className="font-mono text-3xl font-bold tracking-[0.2em]">
+                        <span className="sr-only">
+                          Código {pass.accessCode.split("").join(" ")}
+                        </span>
+                        <span aria-hidden="true">
+                          {groupCode(pass.accessCode)}
+                        </span>
+                      </p>
+                      <p className="text-sm">
+                        {formatGate(registration.gate)}
+                        {registration.arrivalAt &&
+                          ` · Llegada ${formatTime(registration.arrivalAt)}`}
+                        {` · ${registration.referenceCode}`}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </CodesPdf>
             ))}
-          </ul>
         </div>
       )}
     </>

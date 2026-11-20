@@ -302,7 +302,8 @@ create function public.start_registration(
   p_school_id uuid,
   p_expected_visitors integer,
   p_contact_name text,
-  p_contact_email text
+  p_contact_email text,
+  p_contact_phone text default null
 )
 returns jsonb
 language plpgsql
@@ -344,6 +345,11 @@ begin
     perform public._fail('attendees_invalid', 'Indica el nombre y el correo de contacto');
   end if;
 
+  if p_contact_phone is not null and btrim(p_contact_phone) <> ''
+     and btrim(p_contact_phone) !~ '^\+?[0-9 -]{6,20}$' then
+    perform public._fail('attendees_invalid', 'El teléfono de contacto no es válido');
+  end if;
+
   -- Anti-acaparamiento: tope de inscripciones en curso por correo de contacto
   select count(*) into v_open_count
   from public.event_registrations r
@@ -354,14 +360,10 @@ begin
     perform public._fail('too_many_drafts', 'Ya tienes demasiadas inscripciones en curso con este correo');
   end if;
 
-  begin
-    insert into public.event_registrations (event_id, school_id, owner_id, kind, expected_visitors, contact_name, contact_email)
-    values (p_event_id, v_school_id, v_uid, p_kind, p_expected_visitors, btrim(p_contact_name), btrim(p_contact_email))
-    returning * into v_reg;
-  exception
-    when unique_violation then
-      perform public._fail('school_taken', 'Este colegio ya tiene una inscripción para el evento');
-  end;
+  insert into public.event_registrations (event_id, school_id, owner_id, kind, expected_visitors, contact_name, contact_email, contact_phone)
+  values (p_event_id, v_school_id, v_uid, p_kind, p_expected_visitors, btrim(p_contact_name), btrim(p_contact_email),
+          nullif(btrim(coalesce(p_contact_phone, '')), ''))
+  returning * into v_reg;
 
   perform public._log_registration_event(v_reg.id, 'created', null, 'draft');
   return jsonb_build_object('id', v_reg.id, 'reference_code', v_reg.reference_code);
@@ -1243,7 +1245,7 @@ from public, anon, authenticated;
 
 -- RPC públicas: solo usuarios con sesión (el OTP de Supabase Auth los autentica)
 revoke execute on function
-  public.start_registration(uuid, public.registration_kind, uuid, integer, text, text),
+  public.start_registration(uuid, public.registration_kind, uuid, integer, text, text, text),
   public.hold_tour(uuid, uuid),
   public.release_tour(uuid, uuid),
   public.renew_hold(uuid),
@@ -1260,7 +1262,7 @@ revoke execute on function
 from public, anon;
 
 grant execute on function
-  public.start_registration(uuid, public.registration_kind, uuid, integer, text, text),
+  public.start_registration(uuid, public.registration_kind, uuid, integer, text, text, text),
   public.hold_tour(uuid, uuid),
   public.release_tour(uuid, uuid),
   public.renew_hold(uuid),

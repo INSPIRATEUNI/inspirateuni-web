@@ -55,10 +55,16 @@ function build(subject: string, title: string, paragraphs: string[], link?: { hr
 }
 
 /** Devuelve null si la plantilla no existe (error permanente: no tiene sentido reintentar). */
-export function render(template: string, payload: Payload, siteUrl: string): Rendered | null {
+export function render(
+  template: string,
+  payload: Payload,
+  siteUrl: string,
+  registrationId?: string | null,
+): Rendered | null {
   const ref = esc(payload.reference_code);
   const event = esc(payload.event_name ?? "el Open Day");
-  const myRegistration = { href: `${siteUrl}/provov/open-day/mi-inscripcion`, label: "Ir a Mi inscripción" };
+  const myRegistration = { href: `${siteUrl}/provov/open-day/inscripcion/mi-inscripcion`, label: "Ir a Mi inscripción" };
+  const codesHref = `${siteUrl}/provov/open-day/inscripcion/mi-inscripcion/codigos${registrationId ? `?id=${encodeURIComponent(registrationId)}` : ""}`;
   const code = `Código de referencia: <strong>${ref}</strong>.`;
 
   switch (template) {
@@ -143,7 +149,7 @@ export function render(template: string, payload: Payload, siteUrl: string): Ren
           "Lleva tus códigos QR (impresos o en el celular) y tu documento de identidad.",
           code,
         ].filter(Boolean),
-        { href: `${siteUrl}/provov/open-day/mi-inscripcion/codigos`, label: "Ver mis códigos" },
+        { href: codesHref, label: "Ver mis códigos" },
       );
     case "registration_confirmed":
       return build(
@@ -155,7 +161,7 @@ export function render(template: string, payload: Payload, siteUrl: string): Ren
           "Adjuntamos el PDF con los códigos QR de cada persona. Cada una debe presentar el suyo (impreso o en el celular) junto con su documento de identidad.",
           code,
         ],
-        { href: `${siteUrl}/provov/open-day/mi-inscripcion/codigos`, label: "Ver mis códigos" },
+        { href: codesHref, label: "Ver mis códigos" },
       );
     case "credentials_updated":
       return build(
@@ -165,7 +171,7 @@ export function render(template: string, payload: Payload, siteUrl: string): Ren
           "Se modificó la lista de personas de tu inscripción. Adjuntamos el PDF con los códigos actualizados; los anteriores ya no sirven.",
           code,
         ],
-        { href: `${siteUrl}/provov/open-day/mi-inscripcion/codigos`, label: "Ver mis códigos" },
+        { href: codesHref, label: "Ver mis códigos" },
       );
     default:
       return null;
