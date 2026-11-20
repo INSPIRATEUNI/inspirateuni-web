@@ -157,6 +157,23 @@ export function peopleSchema(options: {
     .superRefine(({ people }, ctx) => {
       const seen = new Map<string, number>();
       let visitors = 0;
+      if (
+        options.kind === "individual" &&
+        people.some(
+          (p) =>
+            p.role === "visitor" &&
+            ISO_DATE.test(p.birthDate) &&
+            ageOn(p.birthDate, options.eventDate) < 18,
+        ) &&
+        !people.some((p) => p.role !== "visitor")
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["people"],
+          message:
+            "Un visitante menor de edad debe ir con un adulto acompañante.",
+        });
+      }
       people.forEach((person, index) => {
         const key = `${person.docType}:${person.docNumber.trim().toUpperCase()}`;
         const first = seen.get(key);

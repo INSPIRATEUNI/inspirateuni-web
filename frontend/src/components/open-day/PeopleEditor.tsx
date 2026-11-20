@@ -389,16 +389,18 @@ export function PeopleEditor({
           <PlusIcon className="size-4" />
           {isSchool ? "Agregar escolar" : "Agregar visitante"}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            append(emptyPerson(isSchool ? "chaperone" : "guardian"))
-          }
-        >
-          <PlusIcon className="size-4" />
-          {isSchool ? "Agregar acompañante" : "Agregar adulto acompañante"}
-        </Button>
+        {(isSchool || minorVisitor || adults > 0) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              append(emptyPerson(isSchool ? "chaperone" : "guardian"))
+            }
+          >
+            <PlusIcon className="size-4" />
+            {isSchool ? "Agregar acompañante" : "Agregar adulto acompañante"}
+          </Button>
+        )}
       </div>
 
       {serverError && <Notice tone="error">{serverError}</Notice>}

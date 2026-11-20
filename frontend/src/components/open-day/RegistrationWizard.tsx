@@ -337,7 +337,7 @@ export function RegistrationWizard({
     },
     {
       id: "people",
-      title: isSchool ? "Escolares y acompañantes" : "Visitantes y acompañante",
+      title: isSchool ? "Escolares y acompañantes" : "Visitantes",
       icon: <UsersIcon />,
       status: stepStatus(3, current),
       lockedHint: "Se habilita al confirmar los recorridos.",
