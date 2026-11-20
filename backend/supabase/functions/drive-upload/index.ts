@@ -167,18 +167,30 @@ async function finalize(req: Request, body: Record<string, unknown>) {
     await store.discard(fileId);
     throw rpcError(error);
   }
-  // Copia a Drive (Apps Script con la cuenta del dueño): no bloquea ni hace fallar la subida
-  if (Deno.env.get("DOCUMENT_STORAGE") === "supabase" && Deno.env.get("APPS_SCRIPT_URL")) {
-    const copy = mirrorToDrive(admin, {
-      path: fileId,
-      documentId: String(data),
-      reference: registration.reference_code,
-      kind,
-      fileName: String(body.file_name ?? file.name).slice(0, MAX_NAME),
-    });
-    const runtime = (globalThis as { EdgeRuntime?: { waitUntil(promise: Promise<unknown>): void } }).EdgeRuntime;
-    if (runtime) runtime.waitUntil(copy);
-    else await copy;
+  // Copia a Drive (Apps Script con la cuenta del dueño). Se espera hasta 25 s para que la función no
+  // se apague a medias; si falla o tarda, la subida del colegio igual queda registrada.
+  if (Deno.env.get("DOCUMENT_STORAGE") === "supabase") {
+    if (!Deno.env.get("APPS_SCRIPT_URL") || !Deno.env.get("APPS_SCRIPT_SECRET")) {
+      console.warn("Copia a Drive omitida: faltan APPS_SCRIPT_URL o APPS_SCRIPT_SECRET");
+    } else {
+      let timer: number | undefined;
+      await Promise.race([
+        mirrorToDrive(admin, {
+          path: fileId,
+          documentId: String(data),
+          reference: registration.reference_code,
+          kind,
+          fileName: String(body.file_name ?? file.name).slice(0, MAX_NAME),
+        }),
+        new Promise((resolve) => {
+          timer = setTimeout(() => {
+            console.error("La copia a Drive tardó más de 25 s", String(data));
+            resolve(null);
+          }, 25000);
+        }),
+      ]);
+      clearTimeout(timer);
+    }
   }
   return json(req, { document_id: data });
 }
@@ -206,6 +218,7 @@ async function mirrorToDrive(
     });
     const result = await res.json().catch(() => null);
     if (!res.ok || !result?.ok) throw new Error(result?.error ?? `HTTP ${res.status}`);
+    console.log("Documento copiado a Drive", doc.documentId, result.file_id);
   } catch (err) {
     console.error("No se pudo copiar el documento a Drive", doc.documentId, err);
   }

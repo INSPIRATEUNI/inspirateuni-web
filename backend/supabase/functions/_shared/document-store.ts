@@ -146,7 +146,30 @@ export function uploadStore(admin: SupabaseClient): DocumentStore {
   return Deno.env.get("DOCUMENT_STORAGE") === "supabase" ? supabaseStore(admin) : driveStore;
 }
 
+/**
+ * Con DOCUMENT_STORAGE=supabase no hay cuenta de servicio de Google, así que los ids de Drive (los PDF
+ * de códigos que genera el Apps Script, que quedan en el Drive de su dueño) se leen pidiéndole el
+ * archivo al propio Apps Script (acción get_file, en base64).
+ */
+const appsScriptDriveStore: DocumentStore = {
+  ...driveStore,
+  async download(fileId) {
+    const res = await fetch(Deno.env.get("APPS_SCRIPT_URL") as string, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ secret: Deno.env.get("APPS_SCRIPT_SECRET"), action: "get_file", file_id: fileId }),
+    });
+    const result = await res.json().catch(() => null);
+    if (!res.ok || !result?.ok) throw new Error(`Apps Script no entregó el archivo: ${result?.error ?? `HTTP ${res.status}`}`);
+    const bytes = Uint8Array.from(atob(result.data as string), (c) => c.charCodeAt(0));
+    return new Response(bytes, { headers: { "Content-Type": "application/pdf" } });
+  },
+};
+
 /** Almacén de un archivo ya registrado, según su id guardado. */
 export function storeFor(storedId: string, admin: SupabaseClient): DocumentStore {
-  return storedId.startsWith(SUPABASE_PREFIX) ? supabaseStore(admin) : driveStore;
+  if (storedId.startsWith(SUPABASE_PREFIX)) return supabaseStore(admin);
+  const viaAppsScript = Deno.env.get("DOCUMENT_STORAGE") === "supabase" && Deno.env.get("APPS_SCRIPT_URL") &&
+    Deno.env.get("APPS_SCRIPT_SECRET");
+  return viaAppsScript ? appsScriptDriveStore : driveStore;
 }

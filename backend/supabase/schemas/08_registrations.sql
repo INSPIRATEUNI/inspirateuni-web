@@ -49,6 +49,7 @@ create table public.event_registrations (
   arrival_at timestamptz,
   contact_name text not null,
   contact_email extensions.citext not null,
+  contact_phone text check (contact_phone is null or length(contact_phone) between 6 and 20),
   accepted_terms_at timestamptz,
   terms_version text,
   created_at timestamptz not null default now(),
