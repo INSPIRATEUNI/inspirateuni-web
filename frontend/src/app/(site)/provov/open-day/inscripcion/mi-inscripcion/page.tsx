@@ -268,13 +268,6 @@ function RegistrationCard({
                   : doc.observation
                     ? " · Observado"
                     : " · En revisión"}
-                {!doc.verifiedAt && doc.observation && (
-                  <p className="mt-1 whitespace-pre-line">
-                    <span className="font-semibold">Comentario:</span>
-                    <br />
-                    {doc.observation}
-                  </p>
-                )}
               </li>
             ))}
           </ul>

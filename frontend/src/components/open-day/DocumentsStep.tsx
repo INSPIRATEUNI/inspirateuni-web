@@ -68,8 +68,42 @@ export function DocumentsStep({
       )
     : required;
 
+  // La observación es una sola por revisión: se muestra una vez, en su propio recuadro
+  const observations = [
+    ...new Set(
+      registration.documents
+        .filter(
+          (d) =>
+            d.kind !== "credentials" &&
+            kinds.includes(d.kind) &&
+            d.observation &&
+            !d.verifiedAt,
+        )
+        .map((d) => d.observation as string),
+    ),
+  ];
+
   return (
     <div className="grid gap-6">
+      {observations.length > 0 && (
+        <section
+          aria-labelledby="observations-title"
+          className="grid gap-2 rounded-lg border-2 border-orange bg-tint-orange p-5"
+        >
+          <h3
+            id="observations-title"
+            className="text-xs font-extrabold uppercase tracking-widest text-orange-ink"
+          >
+            Observaciones del equipo
+          </h3>
+          {observations.map((text) => (
+            <p key={text} className="whitespace-pre-line">
+              {text}
+            </p>
+          ))}
+        </section>
+      )}
+
       {!onlyObserved && templates.length > 0 && (
         <section
           aria-labelledby="templates-title"
@@ -224,10 +258,8 @@ function DocumentUpload({
             </p>
           )}
           {observed && (
-            <p className="mt-1 whitespace-pre-line text-sm font-semibold text-orange-ink">
-              Comentario:
-              <br />
-              {current.observation}
+            <p className="mt-1 text-sm font-semibold text-orange-ink">
+              Observado: corrígelo y vuelve a subirlo.
             </p>
           )}
         </div>
