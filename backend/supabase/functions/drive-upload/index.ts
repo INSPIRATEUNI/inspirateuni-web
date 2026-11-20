@@ -5,7 +5,7 @@
 //   download       → sirve el PDF al staff (board/admin) en streaming; nunca se comparten enlaces.
 // El navegador no recibe credenciales. Todo el acceso pasa por lib/storage.ts del frontend.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { type DocumentStore, storeFor, uploadStore } from "../_shared/document-store.ts";
+import { DOCUMENTS_BUCKET, type DocumentStore, storeFor, uploadStore } from "../_shared/document-store.ts";
 import { corsHeaders, errorResponse, HttpError, json, validOrigin } from "../_shared/http.ts";
 
 const PDF = "application/pdf";
@@ -167,7 +167,48 @@ async function finalize(req: Request, body: Record<string, unknown>) {
     await store.discard(fileId);
     throw rpcError(error);
   }
+  // Copia a Drive (Apps Script con la cuenta del dueño): no bloquea ni hace fallar la subida
+  if (Deno.env.get("DOCUMENT_STORAGE") === "supabase" && Deno.env.get("APPS_SCRIPT_URL")) {
+    const copy = mirrorToDrive(admin, {
+      path: fileId,
+      documentId: String(data),
+      reference: registration.reference_code,
+      kind,
+      fileName: String(body.file_name ?? file.name).slice(0, MAX_NAME),
+    });
+    const runtime = (globalThis as { EdgeRuntime?: { waitUntil(promise: Promise<unknown>): void } }).EdgeRuntime;
+    if (runtime) runtime.waitUntil(copy);
+    else await copy;
+  }
   return json(req, { document_id: data });
+}
+
+/** Pide al Apps Script que descargue el PDF con una URL firmada de 10 min y lo guarde en Drive. Nunca lanza. */
+async function mirrorToDrive(
+  admin: SupabaseClient,
+  doc: { path: string; documentId: string; reference: string; kind: string; fileName: string },
+) {
+  try {
+    const { data, error } = await admin.storage.from(DOCUMENTS_BUCKET).createSignedUrl(doc.path, 600);
+    if (error || !data) throw new Error(error?.message ?? "sin URL firmada");
+    const res = await fetch(env("APPS_SCRIPT_URL"), {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        secret: env("APPS_SCRIPT_SECRET"),
+        action: "save_document",
+        url: data.signedUrl,
+        document_id: doc.documentId,
+        reference: doc.reference,
+        kind: doc.kind,
+        file_name: doc.fileName,
+      }),
+    });
+    const result = await res.json().catch(() => null);
+    if (!res.ok || !result?.ok) throw new Error(result?.error ?? `HTTP ${res.status}`);
+  } catch (err) {
+    console.error("No se pudo copiar el documento a Drive", doc.documentId, err);
+  }
 }
 
 async function checkPdf(
