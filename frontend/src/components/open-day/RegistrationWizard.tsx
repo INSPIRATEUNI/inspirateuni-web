@@ -449,6 +449,14 @@ export function RegistrationWizard({
 
   return (
     <div className="grid gap-8">
+      {registration?.status === "reserved" && registration.reopenReason && (
+        <Notice tone="warning" title="Reabrimos tu inscripción">
+          <span className="block font-bold">Observaciones del equipo</span>
+          <span className="block whitespace-pre-line">
+            {registration.reopenReason}
+          </span>
+        </Notice>
+      )}
       {registration?.status === "reserved" && registration.docsDeadline && (
         <Notice tone="info">
           Tienes hasta el{" "}

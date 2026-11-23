@@ -129,6 +129,7 @@ export type Registration = {
   contactName: string;
   contactEmail: string;
   contactPhone: string | null;
+  reopenReason: string | null;
   school: { id: string; name: string; district: string | null } | null;
   enrollments: Enrollment[];
   attendees: Attendee[];
