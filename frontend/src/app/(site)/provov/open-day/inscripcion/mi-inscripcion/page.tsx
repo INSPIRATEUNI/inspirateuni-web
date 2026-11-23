@@ -274,6 +274,21 @@ function RegistrationCard({
         </section>
       )}
 
+      {registration.status === "reserved" && registration.reopenReason && (
+        <Notice tone="warning" title="Reabrimos tu inscripción">
+          <span className="block font-bold">Observaciones del equipo</span>
+          <span className="block whitespace-pre-line">
+            {registration.reopenReason}
+          </span>
+          {registration.docsDeadline && (
+            <span className="mt-2 block">
+              Corrige y vuelve a enviarla hasta el{" "}
+              <strong>{formatDateTime(registration.docsDeadline)}</strong>.
+            </span>
+          )}
+        </Notice>
+      )}
+
       {registration.status === "docs_observed" && (
         <ObservedDocuments event={event} registration={registration} />
       )}
