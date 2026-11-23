@@ -345,6 +345,7 @@ export function RegistrationWizard({
         <PeopleEditor
           event={event}
           registration={registration}
+          onVisitorsChanged={reload}
           onSaved={async () => {
             const fresh = await reload();
             if (fresh && peopleComplete(event, fresh)) setPhase("documents");

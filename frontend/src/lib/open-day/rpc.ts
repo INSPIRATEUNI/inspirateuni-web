@@ -116,6 +116,17 @@ export async function setAttendees(
   };
 }
 
+/** Cambia la cantidad de visitantes declarados (inscripción en reserva). */
+export function setExpectedVisitors(
+  registrationId: string,
+  expectedVisitors: number,
+) {
+  return call<null>("set_expected_visitors", {
+    p_registration_id: registrationId,
+    p_expected_visitors: expectedVisitors,
+  });
+}
+
 export function setLogistics(
   registrationId: string,
   items: { option_code: string; quantity: number; notes: string | null }[],
