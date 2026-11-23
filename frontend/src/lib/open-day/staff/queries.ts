@@ -37,15 +37,32 @@ export async function fetchAllRows<T>(
 
 export const INBOX_TABS = {
   "por-validar": { label: "Por validar", statuses: ["submitted"] },
+  reabiertas: {
+    label: "Reabiertas",
+    statuses: ["reserved"],
+    reopened: true,
+  },
   observadas: { label: "Observadas", statuses: ["docs_observed"] },
   confirmadas: { label: "Confirmadas", statuses: ["confirmed"] },
-  "en-curso": { label: "En curso", statuses: ["draft", "held", "reserved"] },
+  "en-curso": {
+    label: "En curso",
+    statuses: ["draft", "held", "reserved"],
+    reopened: false,
+  },
   reasignar: { label: "Por reasignar", statuses: ["needs_reassignment"] },
   cerradas: {
     label: "Canceladas y vencidas",
     statuses: ["cancelled", "expired"],
   },
-} satisfies Record<string, { label: string; statuses: RegistrationStatus[] }>;
+} satisfies Record<
+  string,
+  {
+    label: string;
+    statuses: RegistrationStatus[];
+    /** true: solo reabiertas por un admin; false: sin las reabiertas. */
+    reopened?: boolean;
+  }
+>;
 
 export type InboxTab = keyof typeof INBOX_TABS;
 
@@ -122,6 +139,9 @@ export async function fetchInbox(
     )
     .eq("event_id", eventId)
     .in("status", INBOX_TABS[tab].statuses);
+  const reopened = (INBOX_TABS[tab] as { reopened?: boolean }).reopened;
+  if (reopened === true) request = request.not("reopen_reason", "is", null);
+  if (reopened === false) request = request.is("reopen_reason", null);
   if (kind) request = request.eq("kind", kind);
 
   if (term) {
@@ -147,7 +167,7 @@ export async function fetchInbox(
   request =
     tab === "por-validar"
       ? request.order("submitted_at", { ascending: true })
-      : tab === "observadas"
+      : tab === "observadas" || tab === "reabiertas"
         ? request.order("docs_deadline", { ascending: true })
         : request.order("created_at", { ascending: false });
 
@@ -185,20 +205,23 @@ export async function fetchStatusCounts(
   const rows = await fetchAllRows<{
     status: RegistrationStatus;
     expected_visitors: number;
+    reopen_reason: string | null;
   }>((from, to) =>
     supabase
       .from("event_registrations")
-      .select("status, expected_visitors")
+      .select("status, expected_visitors, reopen_reason")
       .eq("event_id", eventId)
       .range(from, to),
   );
   const counts = {} as Record<RegistrationStatus, number>;
   const visitors = {} as Record<RegistrationStatus, number>;
+  let reopened = 0;
   for (const row of rows) {
+    if (row.status === "reserved" && row.reopen_reason) reopened += 1;
     counts[row.status] = (counts[row.status] ?? 0) + 1;
     visitors[row.status] = (visitors[row.status] ?? 0) + row.expected_visitors;
   }
-  return { counts, visitors, total: rows.length };
+  return { counts, visitors, reopened, total: rows.length };
 }
 
 // Detalle ----------------------------------------------------------------------------------------
