@@ -15,7 +15,7 @@ import {
   parsePeople,
   peopleTemplateCsv,
 } from "@/lib/open-day/people-import";
-import { setAttendees } from "@/lib/open-day/rpc";
+import { setAttendees, setExpectedVisitors } from "@/lib/open-day/rpc";
 import {
   docTypes,
   emptyPerson,
@@ -34,7 +34,102 @@ type PeopleEditorProps = {
   onSaved: () => Promise<unknown>;
   /** Cómo se guarda la lista; por defecto `set_attendees` del dueño (el staff usa el override de admin). */
   save?: (people: PersonValues[]) => Promise<SaveResult>;
+  /** Si se pasa, el dueño puede cambiar aquí la cantidad de visitantes; se llama al guardarla. */
+  onVisitorsChanged?: () => Promise<unknown>;
 };
+
+/** Cambia la cantidad de visitantes declarados sin volver al primer paso. */
+function VisitorsCountControl({
+  event,
+  registration,
+  onChanged,
+}: {
+  event: OpenDayEvent;
+  registration: Registration;
+  onChanged: () => Promise<unknown>;
+}) {
+  const max =
+    registration.kind === "school"
+      ? event.maxVisitorsPerRegistration
+      : event.maxVisitorsIndividual;
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(String(registration.expectedVisitors));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const parsed = Number(value);
+  const valid =
+    Number.isInteger(parsed) && parsed >= 1 && (max === null || parsed <= max);
+
+  async function apply() {
+    setBusy(true);
+    setError(null);
+    const result = await setExpectedVisitors(registration.id, parsed);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error.message);
+      return;
+    }
+    setOpen(false);
+    await onChanged();
+  }
+
+  if (!open) {
+    return (
+      <p className="text-sm">
+        ¿Cambió la cantidad de{" "}
+        {registration.kind === "school" ? "escolares" : "visitantes"}?{" "}
+        <button
+          type="button"
+          onClick={() => {
+            setValue(String(registration.expectedVisitors));
+            setError(null);
+            setOpen(true);
+          }}
+          className="font-bold text-magenta hover:underline"
+        >
+          Cambiar cantidad
+        </button>
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 rounded-md border-2 border-border bg-surface p-4">
+      <label className="grid gap-1 text-sm font-semibold" htmlFor="new-count">
+        Nueva cantidad{max ? ` (hasta ${max})` : ""}
+        <input
+          id="new-count"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={max ?? undefined}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className={cn(fieldClasses, "max-w-32")}
+        />
+      </label>
+      <p className="text-sm text-muted-foreground">
+        Se ajustan los cupos de tus recorridos. Si alguno no tiene lugar para la
+        nueva cantidad, no se hace el cambio.
+      </p>
+      {error && <Notice tone="error">{error}</Notice>}
+      <div className="flex flex-wrap gap-3">
+        <Button type="button" onClick={apply} disabled={!valid || busy}>
+          {busy ? "Guardando…" : "Guardar cantidad"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setOpen(false)}
+          disabled={busy}
+        >
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 const cellInput = cn(fieldClasses, "min-w-0 px-2.5 py-2 text-sm");
 
@@ -65,6 +160,7 @@ export function PeopleEditor({
   registration,
   onSaved,
   save = (people) => setAttendees(registration.id, people),
+  onVisitorsChanged,
 }: PeopleEditorProps) {
   const isSchool = registration.kind === "school";
   const schema = useMemo(
@@ -180,6 +276,14 @@ export function PeopleEditor({
             ? "Registra tus datos. Si eres menor de edad el día del evento, agrega a un acompañante o tutor mayor de edad."
             : `Registra a las ${registration.expectedVisitors} personas que asistirán. Si alguna es menor de edad el día del evento, agrega a un acompañante o tutor mayor de edad; los acompañantes y tutores no cuentan como visitantes.`}
       </p>
+
+      {onVisitorsChanged && (
+        <VisitorsCountControl
+          event={event}
+          registration={registration}
+          onChanged={onVisitorsChanged}
+        />
+      )}
 
       <ul className="flex flex-wrap gap-3" aria-label="Resumen de la lista">
         {counters.map((counter) => (
