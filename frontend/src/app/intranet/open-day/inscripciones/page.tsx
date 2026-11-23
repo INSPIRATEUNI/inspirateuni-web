@@ -77,10 +77,17 @@ export default async function InboxPage({
             (typeof INBOX_TABS)[InboxTab],
           ][]
         ).map(([key, def]) => {
-          const n = def.statuses.reduce(
+          const base = def.statuses.reduce(
             (sum, s) => sum + (status.counts[s] ?? 0),
             0,
           );
+          const reopened = (def as { reopened?: boolean }).reopened;
+          const n =
+            reopened === true
+              ? status.reopened
+              : reopened === false
+                ? base - status.reopened
+                : base;
           const active = key === tab;
           return (
             <Link

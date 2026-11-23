@@ -53,6 +53,13 @@ export default async function OpenDayOverviewPage({
       tone: "text-magenta-deep",
     },
     {
+      label: "Reabiertas",
+      value: status.reopened,
+      hint: "Reabiertas para corregir",
+      href: inbox("reabiertas"),
+      tone: "text-orange-ink",
+    },
+    {
       label: "Confirmadas",
       value: count("confirmed"),
       hint: `${status.visitors.confirmed ?? 0} visitantes`,
@@ -61,7 +68,8 @@ export default async function OpenDayOverviewPage({
     },
     {
       label: "En curso",
-      value: count("draft") + count("held") + count("reserved"),
+      value:
+        count("draft") + count("held") + count("reserved") - status.reopened,
       hint: "Aún no envían",
       href: inbox("en-curso"),
       tone: "text-orange-ink",
