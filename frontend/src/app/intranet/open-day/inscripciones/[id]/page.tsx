@@ -30,7 +30,6 @@ import {
   formatTimeRange,
   isMinorOn,
 } from "@/lib/open-day/format";
-import { staffSendMessage } from "@/lib/open-day/rpc";
 import { toLimaInput, toLimaTime } from "@/lib/open-day/staff/dates";
 import { fetchRegistrationExtras } from "@/lib/open-day/staff/queries";
 import type { DocumentKind } from "@/lib/open-day/types";
@@ -164,11 +163,7 @@ export default async function RegistrationDetailPage({
         </Tag>
       </div>
 
-      <ChatBox
-        registrationId={registration.id}
-        perspective="staff"
-        send={staffSendMessage}
-      />
+      <ChatBox registrationId={registration.id} perspective="staff" />
 
       <dl className="grid gap-4 rounded-lg border-2 border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4">
         {[

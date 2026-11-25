@@ -29,7 +29,6 @@ import {
   formatTime,
   formatTimeRange,
 } from "@/lib/open-day/format";
-import { sendRegistrationMessage } from "@/lib/open-day/rpc";
 import { getSessionUser } from "@/lib/open-day/server";
 import type {
   OpenDayEvent,
@@ -307,11 +306,7 @@ function RegistrationCard({
       )}
 
       {!["expired", "cancelled"].includes(registration.status) && (
-        <ChatBox
-          registrationId={registration.id}
-          perspective="owner"
-          send={sendRegistrationMessage}
-        />
+        <ChatBox registrationId={registration.id} perspective="owner" />
       )}
 
       <div className="flex flex-wrap gap-3">

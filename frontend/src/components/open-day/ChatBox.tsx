@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { fieldClasses } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/open-day/format";
-import type { RpcResult } from "@/lib/open-day/rpc";
+import { sendRegistrationMessage, staffSendMessage } from "@/lib/open-day/rpc";
 import { createClient } from "@/lib/supabase/client";
 import { Notice } from "./Notice";
 
@@ -23,11 +23,12 @@ type ChatBoxProps = {
   registrationId: string;
   /** Quién mira el chat: define de qué lado van sus mensajes y los textos. */
   perspective: "owner" | "staff";
-  send: (registrationId: string, body: string) => Promise<RpcResult<null>>;
 };
 
 /** Chat entre quien se inscribe y el staff (mensajes en `registration_messages`). */
-export function ChatBox({ registrationId, perspective, send }: ChatBoxProps) {
+export function ChatBox({ registrationId, perspective }: ChatBoxProps) {
+  const send =
+    perspective === "owner" ? sendRegistrationMessage : staffSendMessage;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [value, setValue] = useState("");
