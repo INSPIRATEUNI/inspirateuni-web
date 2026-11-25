@@ -127,6 +127,17 @@ export function setExpectedVisitors(
   });
 }
 
+/** Comentario para el staff (vacío lo borra). */
+export function setRegistrationComment(
+  registrationId: string,
+  comment: string,
+) {
+  return call<null>("set_registration_comment", {
+    p_registration_id: registrationId,
+    p_comment: comment,
+  });
+}
+
 export function setLogistics(
   registrationId: string,
   items: { option_code: string; quantity: number; notes: string | null }[],

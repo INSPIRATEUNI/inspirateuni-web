@@ -1,4 +1,6 @@
 import type { Metadata, Route } from "next";
+import { BringDocumentsNotice } from "@/components/open-day/BringDocumentsNotice";
+import { CommentBox } from "@/components/open-day/CommentBox";
 import {
   MyRegistrationLogin,
   ObservedDocuments,
@@ -289,8 +291,25 @@ function RegistrationCard({
         </Notice>
       )}
 
+      {registration.kind === "school" &&
+        [
+          "draft",
+          "held",
+          "reserved",
+          "submitted",
+          "docs_observed",
+          "confirmed",
+        ].includes(registration.status) && <BringDocumentsNotice />}
+
       {registration.status === "docs_observed" && (
         <ObservedDocuments event={event} registration={registration} />
+      )}
+
+      {!["expired", "cancelled"].includes(registration.status) && (
+        <CommentBox
+          registrationId={registration.id}
+          initial={registration.userComment}
+        />
       )}
 
       <div className="flex flex-wrap gap-3">

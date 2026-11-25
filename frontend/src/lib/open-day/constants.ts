@@ -90,7 +90,8 @@ export function requiredDocuments(
   kind: "school" | "individual",
   minorVisitor: boolean,
 ): DocumentKind[] {
-  if (kind === "school") return ["school_consolidated"];
+  // Los colegios no suben documentos: los llevan firmados el día del evento
+  if (kind === "school") return [];
   return minorVisitor
     ? ["consent", "commitment_letter", "guardian_declaration"]
     : ["consent", "commitment_letter"];

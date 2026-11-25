@@ -163,7 +163,7 @@ export async function fetchAvailability(
 
 const REGISTRATION_SELECT = `
   id, event_id, reference_code, kind, status, expected_visitors, hold_renewals,
-  docs_deadline, submitted_at, confirmed_at, gate, arrival_at, contact_name, contact_email, contact_phone, reopen_reason, created_at,
+  docs_deadline, submitted_at, confirmed_at, gate, arrival_at, contact_name, contact_email, contact_phone, reopen_reason, user_comment, user_comment_at, created_at,
   school:schools (id, name, district),
   enrollments:tour_enrollments (session_id, tier, seats, status, hold_expires_at),
   attendees:event_attendees (
@@ -191,6 +191,8 @@ type RegistrationRow = {
   contact_email: string;
   contact_phone: string | null;
   reopen_reason: string | null;
+  user_comment: string | null;
+  user_comment_at: string | null;
   school: { id: string; name: string; district: string | null } | null;
   enrollments: {
     session_id: string;
@@ -244,6 +246,8 @@ function mapRegistration(row: RegistrationRow): Registration {
     contactEmail: row.contact_email,
     contactPhone: row.contact_phone,
     reopenReason: row.reopen_reason,
+    userComment: row.user_comment,
+    userCommentAt: row.user_comment_at,
     school: row.school,
     enrollments: row.enrollments
       .filter((e) => e.status !== "released")
