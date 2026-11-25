@@ -51,8 +51,8 @@ create table public.event_registrations (
   contact_email extensions.citext not null,
   contact_phone text check (contact_phone is null or length(contact_phone) between 6 and 20),
   reopen_reason text,
-  user_comment text check (user_comment is null or length(user_comment) <= 1000),
-  user_comment_at timestamptz,
+  awaiting_staff boolean not null default false,
+  last_message_at timestamptz,
   accepted_terms_at timestamptz,
   terms_version text,
   created_at timestamptz not null default now(),
@@ -212,6 +212,22 @@ create index registration_events_registration_id_idx on public.registration_even
 create index registration_events_actor_id_idx on public.registration_events (actor_id);
 
 comment on table public.registration_events is 'Bitácora: transiciones, overrides (con motivo), conflictos de documento y observaciones. Quién, cuándo y de qué estado a cuál.';
+
+-- Mensajes (chat entre quien se inscribe y el staff) ---------------------------------------------
+
+create table public.registration_messages (
+  id uuid primary key default gen_random_uuid(),
+  registration_id uuid not null references public.event_registrations (id) on delete cascade,
+  sender text not null check (sender in ('owner', 'staff')),
+  sender_id uuid references auth.users (id) on delete set null,
+  body text not null check (length(btrim(body)) between 1 and 1000),
+  created_at timestamptz not null default now()
+);
+
+create index registration_messages_registration_id_idx on public.registration_messages (registration_id, created_at);
+create index registration_messages_sender_id_idx on public.registration_messages (sender_id);
+
+comment on table public.registration_messages is 'Chat de la inscripción: errores o dudas de quien se inscribe y respuestas del staff. event_registrations.awaiting_staff marca los que esperan respuesta.';
 
 -- Logística extensible ------------------------------------------------------------------------
 
@@ -416,6 +432,7 @@ alter table public.tour_enrollments enable row level security;
 alter table public.registration_documents enable row level security;
 alter table public.document_templates enable row level security;
 alter table public.registration_events enable row level security;
+alter table public.registration_messages enable row level security;
 alter table public.logistics_options enable row level security;
 alter table public.registration_logistics enable row level security;
 alter table public.email_outbox enable row level security;

@@ -96,6 +96,7 @@ revoke insert, update, delete, truncate on
   public.tour_enrollments,
   public.registration_documents,
   public.registration_events,
+  public.registration_messages,
   public.registration_logistics,
   public.email_outbox
 from anon, authenticated;
@@ -131,6 +132,12 @@ create policy "registration_logistics: directiva ve todas" on public.registratio
 create policy "event_passes: dueño ve los de su inscripción" on public.event_passes
   for select to authenticated using (public.owns_pass(id));
 create policy "event_passes: directiva ve todos" on public.event_passes
+  for select to authenticated using (public.is_board());
+
+-- Chat: el dueño lee los mensajes de su inscripción; la directiva, todos. Se escribe solo por RPC.
+create policy "registration_messages: dueño ve los suyos" on public.registration_messages
+  for select to authenticated using (public.owns_registration(registration_id));
+create policy "registration_messages: directiva ve todos" on public.registration_messages
   for select to authenticated using (public.is_board());
 
 -- La bitácora y la cola de correos son internas: solo la directiva

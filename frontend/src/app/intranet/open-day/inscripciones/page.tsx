@@ -192,12 +192,9 @@ export default async function InboxPage({
                     <p className="font-semibold">
                       {row.schoolName ?? row.contactName}
                     </p>
-                    {row.userComment && (
-                      <p className="mt-1 max-w-md rounded-md bg-tint-orange px-2 py-1 text-sm whitespace-pre-line">
-                        <span className="font-bold">Comentario:</span>{" "}
-                        {row.userComment.length > 160
-                          ? `${row.userComment.slice(0, 160)}…`
-                          : row.userComment}
+                    {row.awaitingStaff && (
+                      <p className="mt-1 inline-block rounded-md bg-tint-orange px-2 py-0.5 text-sm font-bold text-orange-ink">
+                        Mensaje esperando respuesta
                       </p>
                     )}
                     <p className="text-sm text-muted-foreground">

@@ -1,6 +1,6 @@
 import type { Metadata, Route } from "next";
 import { BringDocumentsNotice } from "@/components/open-day/BringDocumentsNotice";
-import { CommentBox } from "@/components/open-day/CommentBox";
+import { ChatBox } from "@/components/open-day/ChatBox";
 import {
   MyRegistrationLogin,
   ObservedDocuments,
@@ -29,6 +29,7 @@ import {
   formatTime,
   formatTimeRange,
 } from "@/lib/open-day/format";
+import { sendRegistrationMessage } from "@/lib/open-day/rpc";
 import { getSessionUser } from "@/lib/open-day/server";
 import type {
   OpenDayEvent,
@@ -306,9 +307,10 @@ function RegistrationCard({
       )}
 
       {!["expired", "cancelled"].includes(registration.status) && (
-        <CommentBox
+        <ChatBox
           registrationId={registration.id}
-          initial={registration.userComment}
+          perspective="owner"
+          send={sendRegistrationMessage}
         />
       )}
 

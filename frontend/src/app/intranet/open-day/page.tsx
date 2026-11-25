@@ -53,9 +53,9 @@ export default async function OpenDayOverviewPage({
       tone: "text-magenta-deep",
     },
     {
-      label: "Con comentarios",
+      label: "Mensajes pendientes",
       value: status.commented,
-      hint: "Dejaron un mensaje para el equipo",
+      hint: "Esperan respuesta del equipo",
       href: inbox("comentarios"),
       tone: "text-magenta-deep",
     },

@@ -127,14 +127,19 @@ export function setExpectedVisitors(
   });
 }
 
-/** Comentario para el staff (vacío lo borra). */
-export function setRegistrationComment(
-  registrationId: string,
-  comment: string,
-) {
-  return call<null>("set_registration_comment", {
+/** Mensaje de quien se inscribe para el staff (chat de la inscripción). */
+export function sendRegistrationMessage(registrationId: string, body: string) {
+  return call<null>("send_registration_message", {
     p_registration_id: registrationId,
-    p_comment: comment,
+    p_body: body,
+  });
+}
+
+/** Respuesta del staff; se avisa por correo a quien se inscribió. */
+export function staffSendMessage(registrationId: string, body: string) {
+  return call<null>("staff_send_message", {
+    p_registration_id: registrationId,
+    p_body: body,
   });
 }
 

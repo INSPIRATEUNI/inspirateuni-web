@@ -38,7 +38,7 @@ export async function fetchAllRows<T>(
 export const INBOX_TABS = {
   "por-validar": { label: "Por validar", statuses: ["submitted"] },
   comentarios: {
-    label: "Con comentarios",
+    label: "Mensajes pendientes",
     statuses: [
       "draft",
       "held",
@@ -74,7 +74,7 @@ export const INBOX_TABS = {
     statuses: RegistrationStatus[];
     /** true: solo reabiertas por un admin; false: sin las reabiertas. */
     reopened?: boolean;
-    /** true: solo las que dejaron un comentario para el equipo. */
+    /** true: solo las que esperan respuesta del staff en el chat. */
     commented?: boolean;
   }
 >;
@@ -94,7 +94,7 @@ export type InboxRow = {
   contactName: string;
   contactEmail: string;
   contactPhone: string | null;
-  userComment: string | null;
+  awaitingStaff: boolean;
   schoolName: string | null;
   submittedAt: string | null;
   docsDeadline: string | null;
@@ -110,7 +110,7 @@ type InboxDbRow = {
   contact_name: string;
   contact_email: string;
   contact_phone: string | null;
-  user_comment: string | null;
+  awaiting_staff: boolean;
   submitted_at: string | null;
   docs_deadline: string | null;
   created_at: string;
@@ -151,7 +151,7 @@ export async function fetchInbox(
   let request = supabase
     .from("event_registrations")
     .select(
-      "id, reference_code, kind, status, expected_visitors, contact_name, contact_email, contact_phone, user_comment, submitted_at, docs_deadline, created_at, school:schools(name)",
+      "id, reference_code, kind, status, expected_visitors, contact_name, contact_email, contact_phone, awaiting_staff, submitted_at, docs_deadline, created_at, school:schools(name)",
       { count: "exact" },
     )
     .eq("event_id", eventId)
@@ -160,7 +160,7 @@ export async function fetchInbox(
   if (reopened === true) request = request.not("reopen_reason", "is", null);
   if (reopened === false) request = request.is("reopen_reason", null);
   if ((INBOX_TABS[tab] as { commented?: boolean }).commented)
-    request = request.not("user_comment", "is", null);
+    request = request.eq("awaiting_staff", true);
   if (kind) request = request.eq("kind", kind);
 
   if (term) {
@@ -207,7 +207,7 @@ export async function fetchInbox(
       contactName: row.contact_name,
       contactEmail: row.contact_email,
       contactPhone: row.contact_phone,
-      userComment: row.user_comment,
+      awaitingStaff: row.awaiting_staff,
       schoolName: row.school?.name ?? null,
       submittedAt: row.submitted_at,
       docsDeadline: row.docs_deadline,
@@ -226,11 +226,11 @@ export async function fetchStatusCounts(
     status: RegistrationStatus;
     expected_visitors: number;
     reopen_reason: string | null;
-    user_comment: string | null;
+    awaiting_staff: boolean;
   }>((from, to) =>
     supabase
       .from("event_registrations")
-      .select("status, expected_visitors, reopen_reason, user_comment")
+      .select("status, expected_visitors, reopen_reason, awaiting_staff")
       .eq("event_id", eventId)
       .range(from, to),
   );
@@ -240,7 +240,7 @@ export async function fetchStatusCounts(
   let commented = 0;
   for (const row of rows) {
     if (
-      row.user_comment &&
+      row.awaiting_staff &&
       row.status !== "cancelled" &&
       row.status !== "expired"
     )
