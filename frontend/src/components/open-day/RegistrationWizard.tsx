@@ -23,6 +23,7 @@ import {
 } from "@/lib/open-day/constants";
 import { fetchMyRegistrations, isRegistrationOpen } from "@/lib/open-day/data";
 import { formatDateTime, formatTimeRange } from "@/lib/open-day/format";
+import { sendRegistrationMessage } from "@/lib/open-day/rpc";
 import type {
   LogisticsOption,
   OpenDayEvent,
@@ -31,7 +32,7 @@ import type {
 } from "@/lib/open-day/types";
 import { createClient } from "@/lib/supabase/client";
 import { BringDocumentsNotice } from "./BringDocumentsNotice";
-import { CommentBox } from "./CommentBox";
+import { ChatBox } from "./ChatBox";
 import { IndividualDetailsStep, SchoolDetailsStep } from "./DetailsStep";
 import { DocumentsStep, documentsComplete } from "./DocumentsStep";
 import { useAvailability, useRegistration, useSessionUser } from "./hooks";
@@ -485,10 +486,10 @@ export function RegistrationWizard({
       <Stepper steps={steps} />
       {registration &&
         ["draft", "held", "reserved"].includes(registration.status) && (
-          <CommentBox
+          <ChatBox
             registrationId={registration.id}
-            initial={registration.userComment}
-            onSaved={reload}
+            perspective="owner"
+            send={sendRegistrationMessage}
           />
         )}
     </div>

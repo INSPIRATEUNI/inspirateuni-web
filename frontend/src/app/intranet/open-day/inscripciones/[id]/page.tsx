@@ -8,6 +8,7 @@ import {
   type ValidationDocument,
   ValidationPanel,
 } from "@/components/intranet/open-day/ValidationPanel";
+import { ChatBox } from "@/components/open-day/ChatBox";
 import { Heading } from "@/components/ui/Heading";
 import { Tag } from "@/components/ui/Tag";
 import { getCurrentUser } from "@/lib/intranet/user";
@@ -29,6 +30,7 @@ import {
   formatTimeRange,
   isMinorOn,
 } from "@/lib/open-day/format";
+import { staffSendMessage } from "@/lib/open-day/rpc";
 import { toLimaInput, toLimaTime } from "@/lib/open-day/staff/dates";
 import { fetchRegistrationExtras } from "@/lib/open-day/staff/queries";
 import type { DocumentKind } from "@/lib/open-day/types";
@@ -162,26 +164,11 @@ export default async function RegistrationDetailPage({
         </Tag>
       </div>
 
-      {registration.userComment && (
-        <section
-          aria-labelledby="user-comment"
-          className="grid gap-1 rounded-lg border-2 border-orange bg-tint-orange p-5"
-        >
-          <h2
-            id="user-comment"
-            className="text-xs font-extrabold uppercase tracking-widest text-orange-ink"
-          >
-            Comentario de quien se inscribió
-            {registration.userCommentAt &&
-              ` · ${formatDateTime(registration.userCommentAt)}`}
-          </h2>
-          <p className="whitespace-pre-line">{registration.userComment}</p>
-          <p className="text-sm text-muted-foreground">
-            Contacto: {registration.contactName} · {registration.contactEmail}
-            {registration.contactPhone ? ` · ${registration.contactPhone}` : ""}
-          </p>
-        </section>
-      )}
+      <ChatBox
+        registrationId={registration.id}
+        perspective="staff"
+        send={staffSendMessage}
+      />
 
       <dl className="grid gap-4 rounded-lg border-2 border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4">
         {[
