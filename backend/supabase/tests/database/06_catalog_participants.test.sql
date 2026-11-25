@@ -44,10 +44,10 @@ SELECT lives_ok(
      VALUES ('ce', '12345678', 'Otra', 'Persona', '2008-01-01') $$,
   'El mismo número con otro doc_type sí se permite'
 );
-SELECT throws_ok(
+SELECT lives_ok(
   $$ INSERT INTO public.participants (doc_type, doc_number, first_name, last_name, birth_date, email)
      VALUES ('dni', '11111111', 'Copia', 'Correo', '2008-01-01', 'ANA@correo.pe') $$,
-  '23505', NULL, 'El email es único sin distinguir mayúsculas'
+  'El email puede repetirse (hijos con el correo de sus padres)'
 );
 SELECT lives_ok(
   $$ INSERT INTO public.participants (doc_type, doc_number, first_name, last_name, birth_date)

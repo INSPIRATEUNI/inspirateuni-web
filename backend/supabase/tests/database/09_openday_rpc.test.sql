@@ -226,9 +226,9 @@ SELECT is(
   ]$j$::jsonb) ->> 'ok'),
   'true', 'Se reemplaza la lista con un acompañante'
 );
-SELECT throws_ok(
-  $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'r1'), 'v1') $$,
-  'P0001', 'Faltan documentos: school_consolidated', 'Sin el PDF consolidado no se envía'
+SELECT is(
+  (SELECT count(*)::int FROM public.registration_documents WHERE registration_id = (SELECT id FROM ids WHERE k = 'r1')),
+  0, 'Un colegio no necesita subir documentos para enviar (los lleva firmados al evento)'
 );
 INSERT INTO public.registration_documents (id, registration_id, kind, drive_file_id, file_name)
 VALUES ('d0c00000-0000-0000-0000-000000000001', (SELECT id FROM ids WHERE k = 'r1'), 'school_consolidated', 'drive-a', 'consolidado.pdf');
