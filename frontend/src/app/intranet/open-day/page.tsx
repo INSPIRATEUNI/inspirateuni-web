@@ -53,6 +53,13 @@ export default async function OpenDayOverviewPage({
       tone: "text-magenta-deep",
     },
     {
+      label: "Con comentarios",
+      value: status.commented,
+      hint: "Dejaron un mensaje para el equipo",
+      href: inbox("comentarios"),
+      tone: "text-magenta-deep",
+    },
+    {
       label: "Reabiertas",
       value: status.reopened,
       hint: "Reabiertas para corregir",

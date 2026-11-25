@@ -34,6 +34,8 @@ type ValidationPanelProps = {
   documents: ValidationDocument[];
   /** Documentos obligatorios que aún no se subieron. */
   missing: DocumentKind[];
+  /** false en los colegios: llevan los documentos firmados el día del evento y no se suben. */
+  docsRequired: boolean;
   defaultGate: string;
   defaultArrival: string;
   defaultDeadline: string;
@@ -48,6 +50,7 @@ export function ValidationPanel({
   status,
   documents,
   missing,
+  docsRequired,
   defaultGate,
   defaultArrival,
   defaultDeadline,
@@ -76,7 +79,7 @@ export function ValidationPanel({
     };
   });
   const allChecked =
-    documents.length > 0 &&
+    (documents.length > 0 || !docsRequired) &&
     missing.length === 0 &&
     failures.every((f) => f.missing.length === 0);
   const toObserve = failures.filter((f) => f.missing.length > 0);
@@ -140,7 +143,12 @@ export function ValidationPanel({
         </Notice>
       )}
 
-      {documents.length === 0 ? (
+      {!docsRequired && documents.length === 0 ? (
+        <Notice tone="info">
+          Los colegios no suben documentos: los llevan firmados el día del
+          evento y se verifican en la puerta.
+        </Notice>
+      ) : documents.length === 0 ? (
         <p className="text-muted-foreground">Aún no hay documentos subidos.</p>
       ) : (
         <ul className="grid gap-4">
@@ -191,7 +199,7 @@ export function ValidationPanel({
       {done && <Notice tone="success">{done}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 
-      {canValidate && documents.length > 0 && (
+      {canValidate && (documents.length > 0 || !docsRequired) && (
         <div className="grid gap-6 lg:grid-cols-2">
           <div
             className={cn(

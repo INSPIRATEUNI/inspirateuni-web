@@ -23,10 +23,19 @@ function when(value: unknown): string {
   return new Intl.DateTimeFormat("es-PE", { dateStyle: "full", timeStyle: "short", timeZone: TZ }).format(date);
 }
 
+/** Recuadro destacado (p. ej. las observaciones del staff), con saltos de línea respetados. */
+function callout(label: string, text: unknown): string {
+  const body = esc(text).replace(/\r?\n/g, "<br>");
+  return `<div style="margin:0 0 18px;padding:14px 16px;border-left:4px solid #f58a1f;background:#fff4e8;border-radius:8px"><p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#b45309">${esc(label)}</p><p style="margin:0">${body}</p></div>`;
+}
+
 function layout(title: string, paragraphs: string[], link?: { href: string; label: string }): string {
   // "10:00 a. m." ya termina en punto: evita el doble punto al cerrar la oración
   const fix = (p: string) => p.replace(/\.(<\/strong>)\./g, ".$1").replace(/\.\.(?!\.)/g, ".");
-  const body = paragraphs.map((p) => `<p style="margin:0 0 14px">${fix(p)}</p>`).join("");
+  // Los bloques que ya son un <div> (recuadros) no se envuelven en <p>
+  const body = paragraphs
+    .map((p) => (p.startsWith("<div") ? p : `<p style="margin:0 0 14px">${fix(p)}</p>`))
+    .join("");
   const button = link
     ? `<p style="margin:22px 0"><a href="${esc(link.href)}" style="background:#e6007e;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700">${esc(link.label)}</a></p>`
     : "";
@@ -105,9 +114,17 @@ export function render(
         "Recibimos tu inscripción",
         "Recibimos tu inscripción",
         [
-          `Gracias por inscribirte a ${event}. Nuestro equipo revisará tus documentos y te escribirá cuando esté confirmada.`,
+          payload.kind === "school"
+            ? `Gracias por inscribir a tu colegio a ${event}. Nuestro equipo revisará la inscripción y te escribirá cuando esté confirmada.`
+            : `Gracias por inscribirte a ${event}. Nuestro equipo revisará tus documentos y te escribirá cuando esté confirmada.`,
+          payload.kind === "school"
+            ? callout(
+                "Importante",
+                "Recuerda llevar impresos y firmados los documentos del colegio el día del evento. Sin ellos, los escolares no podrán ingresar.",
+              )
+            : "",
           code,
-        ],
+        ].filter(Boolean),
         myRegistration,
       );
     case "documents_observed":
@@ -115,9 +132,21 @@ export function render(
         "Necesitamos que corrijas tus documentos",
         "Necesitamos que corrijas tus documentos",
         [
-          `Revisamos tus documentos y hay observaciones:`,
-          `<em>${esc(payload.observation)}</em>`,
+          "Revisamos tus documentos y encontramos observaciones:",
+          callout("Observaciones del equipo", payload.observation),
           `Puedes reemplazarlos y reenviar tu inscripción hasta el <strong>${esc(when(payload.deadline))}</strong>.`,
+          code,
+        ],
+        myRegistration,
+      );
+    case "registration_reopened":
+      return build(
+        "Reabrimos tu inscripción",
+        "Reabrimos tu inscripción",
+        [
+          "Nuestro equipo reabrió tu inscripción para que puedas hacer correcciones:",
+          callout("Motivo", payload.reason),
+          `Puedes corregir los datos y los documentos, y volver a enviarla hasta el <strong>${esc(when(payload.deadline))}</strong>.`,
           code,
         ],
         myRegistration,
@@ -159,8 +188,14 @@ export function render(
           `Confirmamos tu inscripción a ${event}.`,
           `Ingresa por <strong>${esc(payload.gate)}</strong> a las <strong>${esc(when(payload.arrival_at))}</strong>.`,
           "Adjuntamos el PDF con los códigos QR de cada persona. Cada una debe presentar el suyo (impreso o en el celular) junto con su documento de identidad.",
+          payload.kind === "school"
+            ? callout(
+                "Importante",
+                "Lleven impresos y firmados los documentos del colegio (autorizaciones y carta de compromiso). Sin ellos, los escolares no podrán ingresar.",
+              )
+            : "",
           code,
-        ],
+        ].filter(Boolean),
         { href: codesHref, label: "Ver mis códigos" },
       );
     case "credentials_updated":

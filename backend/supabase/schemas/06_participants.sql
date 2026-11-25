@@ -17,7 +17,7 @@ create table public.participants (
   last_name text not null,
   birth_date date not null check (birth_date <= current_date),
   grade text,
-  email extensions.citext unique,
+  email extensions.citext,
   phone text,
   school_id uuid references public.schools (id) on delete restrict,
   created_at timestamptz not null default now(),
@@ -41,7 +41,7 @@ create table public.guardian_consents (
 
 create index guardian_consents_participant_id_idx on public.guardian_consents (participant_id);
 
-comment on table public.participants is 'Escolares y externos sin cuenta. Se identifican por (doc_type, doc_number); email único cuando existe.';
+comment on table public.participants is 'Escolares y externos sin cuenta. Se identifican por (doc_type, doc_number); el email puede repetirse (los escolares usan el de sus padres).';
 comment on column public.participants.grade is 'Grado del escolar (texto libre).';
 comment on table public.guardian_consents is 'Autorización de apoderado de OVPGES (documento en Supabase Storage). En el Open Day la autorización es el documento de la inscripción.';
 

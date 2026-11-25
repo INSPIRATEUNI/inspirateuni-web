@@ -82,8 +82,9 @@ export default async function InboxPage({
             0,
           );
           const reopened = (def as { reopened?: boolean }).reopened;
-          const n =
-            reopened === true
+          const n = (def as { commented?: boolean }).commented
+            ? status.commented
+            : reopened === true
               ? status.reopened
               : reopened === false
                 ? base - status.reopened
@@ -191,6 +192,14 @@ export default async function InboxPage({
                     <p className="font-semibold">
                       {row.schoolName ?? row.contactName}
                     </p>
+                    {row.userComment && (
+                      <p className="mt-1 max-w-md rounded-md bg-tint-orange px-2 py-1 text-sm whitespace-pre-line">
+                        <span className="font-bold">Comentario:</span>{" "}
+                        {row.userComment.length > 160
+                          ? `${row.userComment.slice(0, 160)}…`
+                          : row.userComment}
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">
                       {KIND_LABELS[row.kind]}
                       {row.schoolName ? ` · ${row.contactName}` : ""} ·{" "}

@@ -30,6 +30,8 @@ import type {
   RegistrationKind,
 } from "@/lib/open-day/types";
 import { createClient } from "@/lib/supabase/client";
+import { BringDocumentsNotice } from "./BringDocumentsNotice";
+import { CommentBox } from "./CommentBox";
 import { IndividualDetailsStep, SchoolDetailsStep } from "./DetailsStep";
 import { DocumentsStep, documentsComplete } from "./DocumentsStep";
 import { useAvailability, useRegistration, useSessionUser } from "./hooks";
@@ -193,7 +195,12 @@ export function RegistrationWizard({
   }
 
   if (registration && status && FINAL_STATUSES.has(status)) {
-    return <SubmittedPanel registration={registration} />;
+    return (
+      <div className="grid gap-6">
+        <SubmittedPanel registration={registration} />
+        {isSchool && status !== "confirmed" && <BringDocumentsNotice />}
+      </div>
+    );
   }
 
   const stepStatus = (index: number, current: number): StepStatus =>
@@ -205,8 +212,7 @@ export function RegistrationWizard({
     "details",
     "tours",
     "people",
-    "documents",
-    ...(isSchool ? ["logistics"] : []),
+    ...(isSchool ? ["logistics"] : ["documents"]),
     "submit",
   ];
   const currentId = !signedIn
@@ -348,7 +354,8 @@ export function RegistrationWizard({
           onVisitorsChanged={reload}
           onSaved={async () => {
             const fresh = await reload();
-            if (fresh && peopleComplete(event, fresh)) setPhase("documents");
+            if (fresh && peopleComplete(event, fresh))
+              setPhase(isSchool ? "logistics" : "documents");
           }}
         />
       ),
@@ -366,7 +373,7 @@ export function RegistrationWizard({
       id: "documents",
       title: "Plantillas y documentos",
       icon: <ClipboardIcon />,
-      status: stepStatus(4, current),
+      status: stepStatus(order.indexOf("documents"), current),
       content: registration && (
         <div className="grid gap-5">
           <DocumentsStep
@@ -378,7 +385,7 @@ export function RegistrationWizard({
             {backButton("people")}
             <Button
               disabled={!documentsComplete(event, registration)}
-              onClick={() => setPhase(isSchool ? "logistics" : "submit")}
+              onClick={() => setPhase("submit")}
             >
               Continuar
             </Button>
@@ -402,7 +409,7 @@ export function RegistrationWizard({
             id: "logistics",
             title: "Logística de llegada",
             icon: <CalendarIcon />,
-            status: stepStatus(5, current),
+            status: stepStatus(order.indexOf("logistics"), current),
             content: registration && (
               <div className="grid gap-5">
                 <LogisticsStep
@@ -413,7 +420,7 @@ export function RegistrationWizard({
                     setPhase("submit");
                   }}
                 />
-                <div>{backButton("documents")}</div>
+                <div>{backButton("people")}</div>
               </div>
             ),
             summary: registration && (
@@ -458,6 +465,11 @@ export function RegistrationWizard({
           </span>
         </Notice>
       )}
+      {isSchool &&
+        registration &&
+        ["draft", "held", "reserved"].includes(registration.status) && (
+          <BringDocumentsNotice />
+        )}
       {registration?.status === "reserved" && registration.docsDeadline && (
         <Notice tone="info">
           Tienes hasta el{" "}
@@ -471,6 +483,14 @@ export function RegistrationWizard({
         </Notice>
       )}
       <Stepper steps={steps} />
+      {registration &&
+        ["draft", "held", "reserved"].includes(registration.status) && (
+          <CommentBox
+            registrationId={registration.id}
+            initial={registration.userComment}
+            onSaved={reload}
+          />
+        )}
     </div>
   );
 }

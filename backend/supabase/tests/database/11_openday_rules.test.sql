@@ -152,9 +152,9 @@ SELECT throws_ok(
   'P0001', 'Se necesitan al menos 2 acompañantes del colegio (hay 1)', '11 visitantes exigen 2 acompañantes'
 );
 SELECT is((SELECT public.set_attendees((SELECT id FROM ids WHERE k = 'sB'), pg_temp.people(11, 2, 'chaperone')) ->> 'ok'), 'true', 'sB completa con 2 acompañantes');
-SELECT throws_ok(
-  $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'sB'), 'v1') $$,
-  'P0001', 'Faltan documentos: school_consolidated', 'Con la proporción correcta, el siguiente requisito es el documento'
+SELECT is(
+  (SELECT count(*)::int FROM public.registration_documents WHERE registration_id = (SELECT id FROM ids WHERE k = 'sB')),
+  0, 'Un colegio no sube documentos: ya no son un requisito para enviar'
 );
 SELECT throws_ok(
   $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'sB'), '') $$,

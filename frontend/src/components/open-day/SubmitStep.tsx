@@ -34,10 +34,14 @@ export function SubmitStep({ registration, onSubmitted }: SubmitStepProps) {
   return (
     <div className="grid gap-5">
       <p className="text-muted-foreground">
-        Revisaremos los documentos y te escribiremos a{" "}
+        {registration.kind === "school"
+          ? "Revisaremos tu inscripción y te escribiremos a "
+          : "Revisaremos los documentos y te escribiremos a "}
         <strong className="text-foreground">{registration.contactEmail}</strong>
-        . Después de enviar, ya no podrás cambiar la lista de personas; solo
-        reemplazar documentos si te los observamos.
+        .{" "}
+        {registration.kind === "school"
+          ? "Después de enviar, ya no podrás cambiar la lista de personas. Recuerda llevar los documentos firmados el día del evento: sin ellos no podrán ingresar."
+          : "Después de enviar, ya no podrás cambiar la lista de personas; solo reemplazar documentos si te los observamos."}
       </p>
       {registration.docsDeadline && (
         <p className="text-sm">

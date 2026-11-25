@@ -162,6 +162,27 @@ export default async function RegistrationDetailPage({
         </Tag>
       </div>
 
+      {registration.userComment && (
+        <section
+          aria-labelledby="user-comment"
+          className="grid gap-1 rounded-lg border-2 border-orange bg-tint-orange p-5"
+        >
+          <h2
+            id="user-comment"
+            className="text-xs font-extrabold uppercase tracking-widest text-orange-ink"
+          >
+            Comentario de quien se inscribió
+            {registration.userCommentAt &&
+              ` · ${formatDateTime(registration.userCommentAt)}`}
+          </h2>
+          <p className="whitespace-pre-line">{registration.userComment}</p>
+          <p className="text-sm text-muted-foreground">
+            Contacto: {registration.contactName} · {registration.contactEmail}
+            {registration.contactPhone ? ` · ${registration.contactPhone}` : ""}
+          </p>
+        </section>
+      )}
+
       <dl className="grid gap-4 rounded-lg border-2 border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4">
         {[
           [
@@ -203,6 +224,9 @@ export default async function RegistrationDetailPage({
             status={registration.status}
             documents={validationDocs}
             missing={missing}
+            docsRequired={
+              requiredDocuments(registration.kind, minorVisitor).length > 0
+            }
             defaultGate={registration.gate ?? ""}
             defaultArrival={defaultArrival}
             defaultDeadline={defaultDeadline}

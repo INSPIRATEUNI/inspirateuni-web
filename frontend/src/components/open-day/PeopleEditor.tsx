@@ -207,18 +207,28 @@ export function PeopleEditor({
       isMinorOn(p.birthDate, event.eventDate),
   );
 
+  const showErrors = () =>
+    setTimeout(
+      () =>
+        document
+          .getElementById("people-errors")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      50,
+    );
+
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
     setSaved(false);
     const result = await save(values.people);
     if (!result.ok) {
       setServerError(result.error.message);
+      showErrors();
       return;
     }
     reset(values);
     setSaved(true);
     await onSaved();
-  });
+  }, showErrors);
 
   const counters = isSchool
     ? [
@@ -340,7 +350,7 @@ export function PeopleEditor({
                   Grado / parentesco
                 </th>
                 <th scope="col" className="px-2 py-2.5">
-                  Correo y celular
+                  Correo y celular (opcionales)
                 </th>
                 <th scope="col" className="px-2 py-2.5">
                   <span className="sr-only">Acciones</span>
@@ -480,8 +490,11 @@ export function PeopleEditor({
         <Notice>Aún no hay personas en la lista.</Notice>
       )}
 
-      <RowErrors errors={errors.people} />
-      {listError && <Notice tone="error">{listError}</Notice>}
+      <div id="people-errors" role="alert" className="grid gap-3 empty:hidden">
+        <RowErrors errors={errors.people} people={people} />
+        {listError && <Notice tone="error">{listError}</Notice>}
+        {serverError && <Notice tone="error">{serverError}</Notice>}
+      </div>
 
       <div className="flex flex-wrap gap-3">
         <Button
@@ -507,7 +520,6 @@ export function PeopleEditor({
         )}
       </div>
 
-      {serverError && <Notice tone="error">{serverError}</Notice>}
       {saved && !isDirty && (
         <Notice tone="success">Guardamos la lista de personas.</Notice>
       )}
@@ -522,26 +534,61 @@ export function PeopleEditor({
 }
 
 /** Lista legible de los errores por fila (la tabla solo marca los campos). */
-function RowErrors({ errors }: { errors: unknown }) {
+const FIELD_LABELS: Record<string, string> = {
+  docType: "Tipo de documento",
+  docNumber: "Documento",
+  firstName: "Nombres",
+  lastName: "Apellidos",
+  birthDate: "Fecha de nacimiento",
+  email: "Correo",
+  phone: "Celular",
+  relationship: "Cargo o parentesco",
+  role: "Rol",
+};
+
+function RowErrors({
+  errors,
+  people,
+}: {
+  errors: unknown;
+  people: PersonValues[];
+}) {
   if (!Array.isArray(errors)) return null;
   const items = errors
     .map((row, index) => {
       if (!row) return null;
-      const messages = Object.values(
+      const messages = Object.entries(
         row as Record<string, { message?: string }>,
       )
-        .map((e) => e?.message)
-        .filter(Boolean);
-      return messages.length > 0 ? { index, text: messages.join(" ") } : null;
+        .filter(([, e]) => e?.message)
+        .map(([key, e]) => `${FIELD_LABELS[key] ?? key}: ${e.message}`);
+      const person = people[index];
+      const who = [person?.firstName, person?.lastName]
+        .filter(Boolean)
+        .join(" ");
+      return messages.length > 0
+        ? {
+            index,
+            text: messages.join(" · "),
+            who: who || person?.docNumber || "",
+          }
+        : null;
     })
-    .filter((item): item is { index: number; text: string } => item !== null);
+    .filter(
+      (item): item is { index: number; text: string; who: string } =>
+        item !== null,
+    );
   if (items.length === 0) return null;
   return (
     <Notice tone="error" title="Revisa estas filas">
       <ul className="grid gap-1">
         {items.slice(0, 12).map((item) => (
           <li key={item.index}>
-            Fila {item.index + 1}: {item.text}
+            <strong>
+              Fila {item.index + 1}
+              {item.who && ` (${item.who})`}:
+            </strong>{" "}
+            {item.text}
           </li>
         ))}
         {items.length > 12 && <li>Y {items.length - 12} filas más.</li>}

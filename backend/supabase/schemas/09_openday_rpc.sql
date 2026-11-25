@@ -95,7 +95,7 @@ set search_path = ''
 as $$
   insert into public.email_outbox (registration_id, to_email, template, payload, dedupe_key)
   select r.id, r.contact_email, p_template,
-         coalesce(p_payload, '{}'::jsonb) || jsonb_build_object('reference_code', r.reference_code),
+         coalesce(p_payload, '{}'::jsonb) || jsonb_build_object('reference_code', r.reference_code, 'kind', r.kind),
          p_dedupe_key
   from public.event_registrations r
   where r.id = p_registration_id
@@ -224,6 +224,9 @@ declare
   v_pid uuid;
   v_role public.attendee_role;
   v_visitors integer;
+  v_idx integer;
+  v_constraint text;
+  v_message text;
 begin
   select * into v_reg from public.event_registrations r where r.id = p_registration_id;
 
@@ -245,7 +248,9 @@ begin
   begin
     delete from public.event_attendees where registration_id = p_registration_id;
 
-    for v_person in select * from jsonb_array_elements(p_people) loop
+    for v_person, v_idx in
+      select e.value, e.ord::integer from jsonb_array_elements(p_people) with ordinality as e(value, ord)
+    loop
       v_role := (v_person ->> 'attendee_role')::public.attendee_role;
 
       insert into public.participants (doc_type, doc_number, first_name, last_name, birth_date, grade, email, phone, school_id)
@@ -271,15 +276,24 @@ begin
     end loop;
   exception
     when unique_violation then
+      get stacked diagnostics v_constraint = constraint_name;
+      v_message := case
+        when v_constraint = 'event_attendees_registration_id_participant_id_key' then
+          format('Fila %s: el documento %s está repetido en la lista.', v_idx, btrim(v_person ->> 'doc_number'))
+        else
+          format('Fila %s: el documento %s ya figura en otra inscripción de este evento. Si es un error, escríbenos con tu código de referencia (%s).',
+                 v_idx, btrim(v_person ->> 'doc_number'), v_reg.reference_code)
+      end;
       -- El bloque se deshizo por completo; el conflicto se registra fuera de él
       perform public._log_registration_event(
         p_registration_id, 'attendee_conflict', v_reg.status, v_reg.status,
-        'Un documento ya figura en otra inscripción o se repite en la lista'
+        'Un documento ya figura en otra inscripción o se repite en la lista',
+        jsonb_build_object('row', v_idx, 'doc_number', btrim(v_person ->> 'doc_number'), 'constraint', v_constraint)
       );
       return jsonb_build_object(
         'ok', false,
         'error', 'attendee_conflict',
-        'message', 'No pudimos registrar a todas las personas. Revisa los datos ingresados.'
+        'message', v_message
       );
   end;
 
@@ -622,6 +636,97 @@ begin
 end;
 $$;
 
+-- Comentario del usuario para el staff (errores, dudas, problemas con la inscripción en curso).
+-- Se puede escribir en cualquier momento mientras la inscripción siga viva; vacío lo borra.
+create function public.set_registration_comment(p_registration_id uuid, p_comment text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_reg public.event_registrations;
+  v_comment text := nullif(btrim(coalesce(p_comment, '')), '');
+begin
+  v_reg := public._lock_owned_registration(p_registration_id);
+  if v_reg.status in ('expired', 'cancelled') then
+    perform public._fail('bad_state', 'Esta inscripción ya terminó');
+  end if;
+  if v_comment is not null and length(v_comment) > 1000 then
+    perform public._fail('attendees_invalid', 'El comentario puede tener hasta 1000 caracteres');
+  end if;
+
+  update public.event_registrations
+  set user_comment = v_comment,
+      user_comment_at = case when v_comment is null then null else now() end
+  where id = v_reg.id;
+
+  perform public._log_registration_event(
+    v_reg.id, 'user_comment', v_reg.status, v_reg.status, v_comment
+  );
+end;
+$$;
+
+-- Cambia la cantidad de visitantes declarados mientras la inscripción está en reserva (después de
+-- elegir los recorridos). Ajusta los asientos de cada recorrido: si falta cupo, no cambia nada.
+create function public.set_expected_visitors(p_registration_id uuid, p_expected_visitors integer)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_reg public.event_registrations;
+  v_ev public.events;
+  v_visitors integer;
+begin
+  v_reg := public._lock_owned_registration(p_registration_id);
+  if v_reg.status <> 'reserved' then
+    perform public._fail('bad_state', 'La cantidad ya no se puede cambiar');
+  end if;
+  if v_reg.docs_deadline < now() then
+    perform public._fail('deadline_passed', 'Venció el plazo para completar la inscripción');
+  end if;
+  if p_expected_visitors is null or p_expected_visitors < 1 then
+    perform public._fail('attendees_invalid', 'Indica cuántos visitantes asistirán');
+  end if;
+
+  select * into v_ev from public.events e where e.id = v_reg.event_id;
+  if v_reg.kind = 'individual' and p_expected_visitors > v_ev.max_visitors_individual then
+    perform public._fail('attendees_invalid', format('Una inscripción individual admite hasta %s visitantes', v_ev.max_visitors_individual));
+  end if;
+  if v_reg.kind = 'school' and v_ev.max_visitors_per_registration is not null
+     and p_expected_visitors > v_ev.max_visitors_per_registration then
+    perform public._fail('attendees_invalid', 'Superaste el máximo de visitantes por inscripción');
+  end if;
+
+  select count(*) into v_visitors
+  from public.event_attendees ea
+  where ea.registration_id = v_reg.id and ea.attendee_role = 'visitor';
+  if v_visitors > p_expected_visitors then
+    perform public._fail(
+      'attendees_invalid',
+      format('Ya registraste %s visitantes: quita a los que sobran antes de reducir la cantidad', v_visitors)
+    );
+  end if;
+
+  begin
+    update public.tour_enrollments
+    set seats = p_expected_visitors
+    where registration_id = v_reg.id and status <> 'released';
+    update public.event_registrations set expected_visitors = p_expected_visitors where id = v_reg.id;
+  exception
+    when check_violation then
+      perform public._fail('no_capacity', 'Algún recorrido no tiene cupo para esa cantidad de visitantes');
+  end;
+
+  perform public._log_registration_event(
+    v_reg.id, 'expected_visitors_changed', v_reg.status, v_reg.status, null,
+    jsonb_build_object('from', v_reg.expected_visitors, 'to', p_expected_visitors)
+  );
+end;
+$$;
+
 -- Envía la inscripción: valida personas, proporciones, topes y documentos
 create function public.submit_registration(p_registration_id uuid, p_terms_version text)
 returns void
@@ -694,7 +799,7 @@ begin
   where d.registration_id = v_reg.id and d.superseded_at is null;
 
   v_required := case
-    when v_reg.kind = 'school' then array['school_consolidated']::public.document_kind[]
+    when v_reg.kind = 'school' then array[]::public.document_kind[]
     when v_minor_visitor then array['consent', 'commitment_letter', 'guardian_declaration']::public.document_kind[]
     else array['consent', 'commitment_letter']::public.document_kind[]
   end;
@@ -707,7 +812,7 @@ begin
   end if;
 
   update public.event_registrations
-  set status = 'submitted', submitted_at = now(), accepted_terms_at = now(), terms_version = btrim(p_terms_version)
+  set status = 'submitted', submitted_at = now(), accepted_terms_at = now(), terms_version = btrim(p_terms_version), reopen_reason = null
   where id = v_reg.id;
 
   perform public._log_registration_event(v_reg.id, 'submitted', 'reserved', 'submitted');
@@ -887,12 +992,17 @@ begin
   v_deadline := coalesce(p_docs_deadline, now() + make_interval(hours => v_hours));
 
   update public.event_registrations
-  set status = 'reserved', docs_deadline = v_deadline, confirmed_at = null
+  set status = 'reserved', docs_deadline = v_deadline, confirmed_at = null, reopen_reason = btrim(p_reason)
   where id = v_reg.id;
 
   perform public._log_registration_event(
     v_reg.id, 'override_reopen', v_reg.status, 'reserved', btrim(p_reason),
     jsonb_build_object('docs_deadline', v_deadline)
+  );
+  perform public._enqueue_email(
+    v_reg.id, 'registration_reopened',
+    jsonb_build_object('reason', btrim(p_reason), 'deadline', v_deadline),
+    'reopened:' || v_reg.id || ':' || extract(epoch from now())::bigint
   );
 end;
 $$;
@@ -1251,6 +1361,8 @@ revoke execute on function
   public.renew_hold(uuid),
   public.confirm_selection(uuid),
   public.set_attendees(uuid, jsonb),
+  public.set_expected_visitors(uuid, integer),
+  public.set_registration_comment(uuid, text),
   public.submit_registration(uuid, text),
   public.resubmit_registration(uuid),
   public.confirm_registration(uuid, text, timestamptz),
@@ -1268,6 +1380,8 @@ grant execute on function
   public.renew_hold(uuid),
   public.confirm_selection(uuid),
   public.set_attendees(uuid, jsonb),
+  public.set_expected_visitors(uuid, integer),
+  public.set_registration_comment(uuid, text),
   public.submit_registration(uuid, text),
   public.resubmit_registration(uuid),
   public.confirm_registration(uuid, text, timestamptz),

@@ -37,6 +37,19 @@ export async function fetchAllRows<T>(
 
 export const INBOX_TABS = {
   "por-validar": { label: "Por validar", statuses: ["submitted"] },
+  comentarios: {
+    label: "Con comentarios",
+    statuses: [
+      "draft",
+      "held",
+      "reserved",
+      "submitted",
+      "docs_observed",
+      "confirmed",
+      "needs_reassignment",
+    ],
+    commented: true,
+  },
   reabiertas: {
     label: "Reabiertas",
     statuses: ["reserved"],
@@ -61,6 +74,8 @@ export const INBOX_TABS = {
     statuses: RegistrationStatus[];
     /** true: solo reabiertas por un admin; false: sin las reabiertas. */
     reopened?: boolean;
+    /** true: solo las que dejaron un comentario para el equipo. */
+    commented?: boolean;
   }
 >;
 
@@ -79,6 +94,7 @@ export type InboxRow = {
   contactName: string;
   contactEmail: string;
   contactPhone: string | null;
+  userComment: string | null;
   schoolName: string | null;
   submittedAt: string | null;
   docsDeadline: string | null;
@@ -94,6 +110,7 @@ type InboxDbRow = {
   contact_name: string;
   contact_email: string;
   contact_phone: string | null;
+  user_comment: string | null;
   submitted_at: string | null;
   docs_deadline: string | null;
   created_at: string;
@@ -134,7 +151,7 @@ export async function fetchInbox(
   let request = supabase
     .from("event_registrations")
     .select(
-      "id, reference_code, kind, status, expected_visitors, contact_name, contact_email, contact_phone, submitted_at, docs_deadline, created_at, school:schools(name)",
+      "id, reference_code, kind, status, expected_visitors, contact_name, contact_email, contact_phone, user_comment, submitted_at, docs_deadline, created_at, school:schools(name)",
       { count: "exact" },
     )
     .eq("event_id", eventId)
@@ -142,6 +159,8 @@ export async function fetchInbox(
   const reopened = (INBOX_TABS[tab] as { reopened?: boolean }).reopened;
   if (reopened === true) request = request.not("reopen_reason", "is", null);
   if (reopened === false) request = request.is("reopen_reason", null);
+  if ((INBOX_TABS[tab] as { commented?: boolean }).commented)
+    request = request.not("user_comment", "is", null);
   if (kind) request = request.eq("kind", kind);
 
   if (term) {
@@ -188,6 +207,7 @@ export async function fetchInbox(
       contactName: row.contact_name,
       contactEmail: row.contact_email,
       contactPhone: row.contact_phone,
+      userComment: row.user_comment,
       schoolName: row.school?.name ?? null,
       submittedAt: row.submitted_at,
       docsDeadline: row.docs_deadline,
@@ -206,22 +226,30 @@ export async function fetchStatusCounts(
     status: RegistrationStatus;
     expected_visitors: number;
     reopen_reason: string | null;
+    user_comment: string | null;
   }>((from, to) =>
     supabase
       .from("event_registrations")
-      .select("status, expected_visitors, reopen_reason")
+      .select("status, expected_visitors, reopen_reason, user_comment")
       .eq("event_id", eventId)
       .range(from, to),
   );
   const counts = {} as Record<RegistrationStatus, number>;
   const visitors = {} as Record<RegistrationStatus, number>;
   let reopened = 0;
+  let commented = 0;
   for (const row of rows) {
+    if (
+      row.user_comment &&
+      row.status !== "cancelled" &&
+      row.status !== "expired"
+    )
+      commented += 1;
     if (row.status === "reserved" && row.reopen_reason) reopened += 1;
     counts[row.status] = (counts[row.status] ?? 0) + 1;
     visitors[row.status] = (visitors[row.status] ?? 0) + row.expected_visitors;
   }
-  return { counts, visitors, reopened, total: rows.length };
+  return { counts, visitors, reopened, commented, total: rows.length };
 }
 
 // Detalle ----------------------------------------------------------------------------------------
