@@ -23,7 +23,6 @@ import {
 } from "@/lib/open-day/constants";
 import { fetchMyRegistrations, isRegistrationOpen } from "@/lib/open-day/data";
 import { formatDateTime, formatTimeRange } from "@/lib/open-day/format";
-import { sendRegistrationMessage } from "@/lib/open-day/rpc";
 import type {
   LogisticsOption,
   OpenDayEvent,
@@ -486,11 +485,7 @@ export function RegistrationWizard({
       <Stepper steps={steps} />
       {registration &&
         ["draft", "held", "reserved"].includes(registration.status) && (
-          <ChatBox
-            registrationId={registration.id}
-            perspective="owner"
-            send={sendRegistrationMessage}
-          />
+          <ChatBox registrationId={registration.id} perspective="owner" />
         )}
     </div>
   );
