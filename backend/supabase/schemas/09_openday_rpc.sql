@@ -636,9 +636,11 @@ begin
 end;
 $$;
 
--- Comentario del usuario para el staff (errores, dudas, problemas con la inscripción en curso).
--- Se puede escribir en cualquier momento mientras la inscripción siga viva; vacío lo borra.
-create function public.set_registration_comment(p_registration_id uuid, p_comment text)
+-- Chat de la inscripción -------------------------------------------------------------------------
+
+-- Mensaje de quien se inscribe para el staff (errores, dudas, problemas). Marca la inscripción como
+-- pendiente de respuesta hasta que el staff conteste.
+create function public.send_registration_message(p_registration_id uuid, p_body text)
 returns void
 language plpgsql
 security definer
@@ -646,23 +648,61 @@ set search_path = ''
 as $$
 declare
   v_reg public.event_registrations;
-  v_comment text := nullif(btrim(coalesce(p_comment, '')), '');
+  v_body text := btrim(coalesce(p_body, ''));
 begin
   v_reg := public._lock_owned_registration(p_registration_id);
   if v_reg.status in ('expired', 'cancelled') then
     perform public._fail('bad_state', 'Esta inscripción ya terminó');
   end if;
-  if v_comment is not null and length(v_comment) > 1000 then
-    perform public._fail('attendees_invalid', 'El comentario puede tener hasta 1000 caracteres');
+  if v_body = '' or length(v_body) > 1000 then
+    perform public._fail('attendees_invalid', 'Escribe un mensaje de hasta 1000 caracteres');
   end if;
 
+  insert into public.registration_messages (registration_id, sender, sender_id, body)
+  values (v_reg.id, 'owner', (select auth.uid()), v_body);
+
   update public.event_registrations
-  set user_comment = v_comment,
-      user_comment_at = case when v_comment is null then null else now() end
+  set awaiting_staff = true, last_message_at = now()
+  where id = v_reg.id;
+end;
+$$;
+
+-- Respuesta del staff: se guarda en el chat, se avisa por correo y se quita de los pendientes.
+create function public.staff_send_message(p_registration_id uuid, p_body text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_reg public.event_registrations;
+  v_body text := btrim(coalesce(p_body, ''));
+  v_id uuid;
+begin
+  if not public.is_board() then
+    perform public._fail('forbidden', 'Solo la directiva puede escribir a las inscripciones');
+  end if;
+  if v_body = '' or length(v_body) > 1000 then
+    perform public._fail('reason_required', 'Escribe un mensaje de hasta 1000 caracteres');
+  end if;
+
+  select * into v_reg from public.event_registrations r where r.id = p_registration_id for update;
+  if not found then
+    perform public._fail('not_found', 'No se encontró la inscripción');
+  end if;
+
+  insert into public.registration_messages (registration_id, sender, sender_id, body)
+  values (v_reg.id, 'staff', (select auth.uid()), v_body)
+  returning id into v_id;
+
+  update public.event_registrations
+  set awaiting_staff = false, last_message_at = now()
   where id = v_reg.id;
 
-  perform public._log_registration_event(
-    v_reg.id, 'user_comment', v_reg.status, v_reg.status, v_comment
+  perform public._enqueue_email(
+    v_reg.id, 'staff_message',
+    jsonb_build_object('message', v_body),
+    'message:' || v_id
   );
 end;
 $$;
@@ -1362,7 +1402,8 @@ revoke execute on function
   public.confirm_selection(uuid),
   public.set_attendees(uuid, jsonb),
   public.set_expected_visitors(uuid, integer),
-  public.set_registration_comment(uuid, text),
+  public.send_registration_message(uuid, text),
+  public.staff_send_message(uuid, text),
   public.submit_registration(uuid, text),
   public.resubmit_registration(uuid),
   public.confirm_registration(uuid, text, timestamptz),
@@ -1381,7 +1422,8 @@ grant execute on function
   public.confirm_selection(uuid),
   public.set_attendees(uuid, jsonb),
   public.set_expected_visitors(uuid, integer),
-  public.set_registration_comment(uuid, text),
+  public.send_registration_message(uuid, text),
+  public.staff_send_message(uuid, text),
   public.submit_registration(uuid, text),
   public.resubmit_registration(uuid),
   public.confirm_registration(uuid, text, timestamptz),

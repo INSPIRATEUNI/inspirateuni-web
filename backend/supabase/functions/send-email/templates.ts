@@ -151,6 +151,18 @@ export function render(
         ],
         myRegistration,
       );
+    case "staff_message":
+      return build(
+        "Tienes un mensaje del equipo",
+        "Tienes un mensaje del equipo",
+        [
+          "Nuestro equipo te escribió sobre tu inscripción:",
+          callout("Mensaje del equipo", payload.message),
+          "Puedes responder desde tu inscripción, en la sección de mensajes.",
+          code,
+        ],
+        myRegistration,
+      );
     case "registration_cancelled":
       return build(
         "Tu inscripción fue cancelada",
