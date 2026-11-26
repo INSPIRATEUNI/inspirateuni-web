@@ -23,6 +23,7 @@ import {
 } from "@/lib/open-day/constants";
 import { fetchMyRegistrations, isRegistrationOpen } from "@/lib/open-day/data";
 import { formatDateTime, formatTimeRange } from "@/lib/open-day/format";
+import { peopleComplete } from "@/lib/open-day/people";
 import type {
   LogisticsOption,
   OpenDayEvent,
@@ -55,20 +56,6 @@ type ReservedPhase = "people" | "documents" | "logistics" | "submit";
 
 const SELECTION_STATUSES = new Set(["draft", "held", "needs_reassignment"]);
 const FINAL_STATUSES = new Set(["submitted", "docs_observed", "confirmed"]);
-
-function peopleComplete(event: OpenDayEvent, registration: Registration) {
-  const visitors = registration.attendees.filter(
-    (a) => a.role === "visitor",
-  ).length;
-  if (visitors !== registration.expectedVisitors) return false;
-  if (registration.kind === "school") {
-    const chaperones = registration.attendees.filter(
-      (a) => a.role === "chaperone",
-    ).length;
-    return chaperones >= Math.ceil(visitors / event.studentsPerChaperone);
-  }
-  return true;
-}
 
 /** Primer paso pendiente dentro de una inscripción reservada. */
 function firstPendingPhase(
@@ -212,7 +199,8 @@ export function RegistrationWizard({
     "details",
     "tours",
     "people",
-    ...(isSchool ? ["logistics"] : ["documents"]),
+    "documents",
+    ...(isSchool ? ["logistics"] : []),
     "submit",
   ];
   const currentId = !signedIn
@@ -354,8 +342,7 @@ export function RegistrationWizard({
           onVisitorsChanged={reload}
           onSaved={async () => {
             const fresh = await reload();
-            if (fresh && peopleComplete(event, fresh))
-              setPhase(isSchool ? "logistics" : "documents");
+            if (fresh && peopleComplete(event, fresh)) setPhase("documents");
           }}
         />
       ),
@@ -371,21 +358,26 @@ export function RegistrationWizard({
     },
     {
       id: "documents",
-      title: "Plantillas y documentos",
+      title: isSchool ? "Descarga las plantillas" : "Plantillas y documentos",
       icon: <ClipboardIcon />,
       status: stepStatus(order.indexOf("documents"), current),
+      lockedHint: "Se habilita al registrar a las personas.",
       content: registration && (
         <div className="grid gap-5">
-          <DocumentsStep
-            event={event}
-            registration={registration}
-            onChanged={reload}
-          />
+          {isSchool ? (
+            <BringDocumentsNotice />
+          ) : (
+            <DocumentsStep
+              event={event}
+              registration={registration}
+              onChanged={reload}
+            />
+          )}
           <div className="flex flex-wrap gap-3">
             {backButton("people")}
             <Button
               disabled={!documentsComplete(event, registration)}
-              onClick={() => setPhase("submit")}
+              onClick={() => setPhase(isSchool ? "logistics" : "submit")}
             >
               Continuar
             </Button>
@@ -395,9 +387,11 @@ export function RegistrationWizard({
       summary: registration && (
         <>
           <p>
-            {registration.documents.length === 1
-              ? "1 documento subido."
-              : `${registration.documents.length} documentos subidos.`}
+            {isSchool
+              ? "Lleva los documentos firmados el día del evento."
+              : registration.documents.length === 1
+                ? "1 documento subido."
+                : `${registration.documents.length} documentos subidos.`}
           </p>
           {editButton("documents")}
         </>
@@ -420,7 +414,7 @@ export function RegistrationWizard({
                     setPhase("submit");
                   }}
                 />
-                <div>{backButton("people")}</div>
+                <div>{backButton("documents")}</div>
               </div>
             ),
             summary: registration && (
@@ -467,15 +461,16 @@ export function RegistrationWizard({
       )}
       {isSchool &&
         registration &&
+        currentId !== "documents" &&
         ["draft", "held", "reserved"].includes(registration.status) && (
-          <BringDocumentsNotice />
+          <BringDocumentsNotice locked={!peopleComplete(event, registration)} />
         )}
       {registration?.status === "reserved" && registration.docsDeadline && (
         <Notice tone="info">
           Tienes hasta el{" "}
           <strong>{formatDateTime(registration.docsDeadline)}</strong> para
-          registrar a las personas, subir los documentos y enviar. Puedes cerrar
-          esta página y volver desde{" "}
+          registrar a las personas{!isSchool && ", subir los documentos"} y
+          enviar. Puedes cerrar esta página y volver desde{" "}
           <a href={OPEN_DAY_ROUTES.mine} className="font-bold underline">
             Mi inscripción
           </a>
