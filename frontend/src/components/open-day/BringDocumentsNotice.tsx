@@ -11,7 +11,12 @@ import { createClient } from "@/lib/supabase/client";
  * Aviso para los colegios: los documentos firmados no se suben, se llevan impresos el día
  * del evento. Sin ellos no se permite el ingreso.
  */
-export function BringDocumentsNotice() {
+export function BringDocumentsNotice({
+  locked = false,
+}: {
+  /** true mientras falten personas por registrar: todavía no se puede descargar. */
+  locked?: boolean;
+}) {
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
 
   useEffect(() => {
@@ -35,13 +40,18 @@ export function BringDocumentsNotice() {
           Los escolares no podrán ingresar sin los documentos firmados.
         </span>
       </p>
-      {templates.length === 0 && (
+      {locked && (
+        <p className="text-sm text-muted-foreground">
+          Podrás descargar las plantillas cuando registres a todas las personas.
+        </p>
+      )}
+      {!locked && templates.length === 0 && (
         <p className="text-sm text-muted-foreground">
           Las plantillas se están cargando. Si no aparecen, escríbenos y te las
           enviamos.
         </p>
       )}
-      {templates.length > 0 && (
+      {!locked && templates.length > 0 && (
         <ul className="flex flex-wrap gap-3">
           {templates.map((template) => (
             <li key={template.kind}>

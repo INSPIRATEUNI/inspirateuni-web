@@ -29,6 +29,7 @@ import {
   formatTime,
   formatTimeRange,
 } from "@/lib/open-day/format";
+import { peopleComplete } from "@/lib/open-day/people";
 import { getSessionUser } from "@/lib/open-day/server";
 import type {
   OpenDayEvent,
@@ -299,7 +300,14 @@ function RegistrationCard({
           "submitted",
           "docs_observed",
           "confirmed",
-        ].includes(registration.status) && <BringDocumentsNotice />}
+        ].includes(registration.status) && (
+          <BringDocumentsNotice
+            locked={
+              CONTINUE_STATUSES.has(registration.status) &&
+              !peopleComplete(event, registration)
+            }
+          />
+        )}
 
       {registration.status === "docs_observed" && (
         <ObservedDocuments event={event} registration={registration} />
