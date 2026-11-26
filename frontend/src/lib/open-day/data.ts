@@ -2,9 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AccessPass,
   DocumentTemplate,
+  GroupPass,
   LogisticsOption,
   OpenDayEvent,
   Registration,
+  RegistrationKind,
   TourSession,
 } from "./types";
 
@@ -101,13 +103,15 @@ export async function fetchLogisticsOptions(
   return (data ?? []) as LogisticsOption[];
 }
 
-/** Plantillas activas; solo un usuario con sesión las puede leer. */
+/** Plantillas activas para ese tipo de inscripción; solo con sesión se pueden leer. */
 export async function fetchTemplates(
   supabase: SupabaseClient,
+  audience: RegistrationKind,
 ): Promise<DocumentTemplate[]> {
   const { data } = await supabase
     .from("document_templates")
     .select("kind, version, drive_file_id")
+    .eq("audience", audience)
     .eq("active", true);
   return (data ?? []).map((row) => ({
     kind: row.kind,
@@ -164,6 +168,7 @@ export async function fetchAvailability(
 const REGISTRATION_SELECT = `
   id, event_id, reference_code, kind, status, expected_visitors, hold_renewals,
   docs_deadline, submitted_at, confirmed_at, gate, arrival_at, contact_name, contact_email, contact_phone, reopen_reason, awaiting_staff, created_at,
+  representative_role, representative_doc_type, representative_doc_number, representative_attends, docs_received_at, accepted_terms_at, terms_version,
   school:schools (id, name, district),
   enrollments:tour_enrollments (session_id, tier, seats, status, hold_expires_at),
   attendees:event_attendees (
@@ -191,6 +196,13 @@ type RegistrationRow = {
   contact_email: string;
   contact_phone: string | null;
   reopen_reason: string | null;
+  representative_role: string | null;
+  representative_doc_type: Registration["representativeDocType"];
+  representative_doc_number: string | null;
+  representative_attends: boolean;
+  docs_received_at: string | null;
+  accepted_terms_at: string | null;
+  terms_version: string | null;
   awaiting_staff: boolean;
   school: { id: string; name: string; district: string | null } | null;
   enrollments: {
@@ -245,6 +257,13 @@ function mapRegistration(row: RegistrationRow): Registration {
     contactEmail: row.contact_email,
     contactPhone: row.contact_phone,
     reopenReason: row.reopen_reason,
+    representativeRole: row.representative_role,
+    representativeDocType: row.representative_doc_type,
+    representativeDocNumber: row.representative_doc_number,
+    representativeAttends: row.representative_attends,
+    docsReceivedAt: row.docs_received_at,
+    acceptedTermsAt: row.accepted_terms_at,
+    termsVersion: row.terms_version,
     awaitingStaff: row.awaiting_staff,
     school: row.school,
     enrollments: row.enrollments
@@ -311,6 +330,22 @@ export async function fetchMyRegistrations(
     .eq("owner_id", ownerId)
     .order("created_at", { ascending: false });
   return ((data ?? []) as unknown as RegistrationRow[]).map(mapRegistration);
+}
+
+/** El código activo de un colegio (una ficha por inscripción). */
+export async function fetchGroupPass(
+  supabase: SupabaseClient,
+  registrationId: string,
+): Promise<GroupPass | null> {
+  const { data } = await supabase
+    .from("registration_passes")
+    .select("access_code, checked_in_at")
+    .eq("registration_id", registrationId)
+    .eq("status", "active")
+    .maybeSingle();
+  return data
+    ? { accessCode: data.access_code, checkedInAt: data.checked_in_at }
+    : null;
 }
 
 /** Pases activos de las personas de una inscripción. */

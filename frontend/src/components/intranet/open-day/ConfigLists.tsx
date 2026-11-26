@@ -13,13 +13,13 @@ import { Notice } from "@/components/open-day/Notice";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
-import {
-  DOCUMENT_LABELS,
-  driveDownloadUrl,
-  TIER_LABELS,
-  TIERS,
-} from "@/lib/open-day/constants";
-import type { Tier } from "@/lib/open-day/types";
+import { templateLabel } from "@/lib/open-day/conditions";
+import { driveDownloadUrl, TIER_LABELS, TIERS } from "@/lib/open-day/constants";
+import type {
+  RegistrationKind,
+  TemplateKind,
+  Tier,
+} from "@/lib/open-day/types";
 
 type Result = { ok: boolean; error?: string };
 
@@ -152,7 +152,18 @@ export function FacultiesEditor({
   );
 }
 
-type TemplateKind = "consent" | "guardian_declaration" | "commitment_letter";
+const AUDIENCES: { id: RegistrationKind; label: string; hint: string }[] = [
+  {
+    id: "school",
+    label: "Colegios",
+    hint: "Se descargan y se llevan firmados el día del evento.",
+  },
+  {
+    id: "individual",
+    label: "Personas libres",
+    hint: "Se descargan y se llevan firmados el día del evento.",
+  },
+];
 const TEMPLATE_KINDS: TemplateKind[] = [
   "consent",
   "guardian_declaration",
@@ -164,6 +175,7 @@ export function TemplatesEditor({
 }: {
   templates: {
     id: string;
+    audience: RegistrationKind;
     kind: TemplateKind;
     version: number;
     driveFileId: string;
@@ -171,6 +183,7 @@ export function TemplatesEditor({
   }[];
 }) {
   const { pending, error, run } = useAction();
+  const [audience, setAudience] = useState<RegistrationKind>("school");
   const [kind, setKind] = useState<TemplateKind>("consent");
   const [link, setLink] = useState("");
 
@@ -181,55 +194,88 @@ export function TemplatesEditor({
         Las personas descargan la versión activa.
       </p>
       {error && <Notice tone="error">{error}</Notice>}
-      <ul className="grid gap-3">
-        {TEMPLATE_KINDS.map((k) => {
-          const versions = templates
-            .filter((t) => t.kind === k)
-            .sort((a, b) => b.version - a.version);
-          return (
-            <li key={k} className="rounded-md border-2 border-border px-4 py-3">
-              <p className="font-semibold">{DOCUMENT_LABELS[k]}</p>
-              {versions.length === 0 ? (
-                <p className="text-sm text-magenta-deep">Sin plantilla.</p>
-              ) : (
-                <ul className="mt-1 grid gap-1 text-sm">
-                  {versions.map((t) => (
-                    <li
-                      key={t.id}
-                      className="flex flex-wrap items-center gap-2"
-                    >
-                      <span>Versión {t.version}</span>
-                      <a
-                        href={driveDownloadUrl(t.driveFileId)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-link"
-                      >
-                        probar descarga
-                      </a>
-                      {t.active ? (
-                        <span className="font-bold text-green-ink">activa</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="rounded-md px-2 py-0.5 font-bold text-blue-deep hover:bg-blue-soft disabled:opacity-60"
-                          disabled={pending}
-                          onClick={() =>
-                            run(() => activateTemplate({ id: t.id, kind: k }))
-                          }
+      {AUDIENCES.map((group) => (
+        <section key={group.id} className="grid gap-2">
+          <div>
+            <h3 className="font-bold">{group.label}</h3>
+            <p className="text-sm text-muted-foreground">{group.hint}</p>
+          </div>
+          <ul className="grid gap-3">
+            {TEMPLATE_KINDS.map((k) => {
+              const versions = templates
+                .filter((t) => t.audience === group.id && t.kind === k)
+                .sort((a, b) => b.version - a.version);
+              return (
+                <li
+                  key={k}
+                  className="rounded-md border-2 border-border px-4 py-3"
+                >
+                  <p className="font-semibold">{templateLabel(group.id, k)}</p>
+                  {versions.length === 0 ? (
+                    <p className="text-sm text-magenta-deep">Sin plantilla.</p>
+                  ) : (
+                    <ul className="mt-1 grid gap-1 text-sm">
+                      {versions.map((t) => (
+                        <li
+                          key={t.id}
+                          className="flex flex-wrap items-center gap-2"
                         >
-                          Activar
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                          <span>Versión {t.version}</span>
+                          <a
+                            href={driveDownloadUrl(t.driveFileId)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-link"
+                          >
+                            probar descarga
+                          </a>
+                          {t.active ? (
+                            <span className="font-bold text-green-ink">
+                              activa
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="rounded-md px-2 py-0.5 font-bold text-blue-deep hover:bg-blue-soft disabled:opacity-60"
+                              disabled={pending}
+                              onClick={() =>
+                                run(() =>
+                                  activateTemplate({
+                                    id: t.id,
+                                    audience: group.id,
+                                    kind: k,
+                                  }),
+                                )
+                              }
+                            >
+                              Activar
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
       <div className="flex flex-wrap items-end gap-2">
+        <label className="grid gap-1 text-sm font-semibold">
+          Para
+          <select
+            className={small}
+            value={audience}
+            onChange={(e) => setAudience(e.target.value as RegistrationKind)}
+          >
+            {AUDIENCES.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="grid gap-1 text-sm font-semibold">
           Tipo
           <select
@@ -239,7 +285,7 @@ export function TemplatesEditor({
           >
             {TEMPLATE_KINDS.map((k) => (
               <option key={k} value={k}>
-                {DOCUMENT_LABELS[k]}
+                {templateLabel(audience, k)}
               </option>
             ))}
           </select>
@@ -259,7 +305,13 @@ export function TemplatesEditor({
           disabled={pending || link.trim().length < 10}
           onClick={() =>
             run(
-              () => addTemplate({ kind, driveFile: link, activate: true }),
+              () =>
+                addTemplate({
+                  audience,
+                  kind,
+                  driveFile: link,
+                  activate: true,
+                }),
               () => setLink(""),
             )
           }

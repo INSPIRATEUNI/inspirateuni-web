@@ -2,26 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { ClipboardIcon } from "@/components/site/Icons";
-import { DOCUMENT_LABELS, driveDownloadUrl } from "@/lib/open-day/constants";
+import { templateLabel } from "@/lib/open-day/conditions";
+import { driveDownloadUrl } from "@/lib/open-day/constants";
 import { fetchTemplates } from "@/lib/open-day/data";
-import type { DocumentTemplate } from "@/lib/open-day/types";
+import type { DocumentTemplate, RegistrationKind } from "@/lib/open-day/types";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Aviso para los colegios: los documentos firmados no se suben, se llevan impresos el día
- * del evento. Sin ellos no se permite el ingreso.
+ * Se muestra una vez enviada la inscripción (colegios y personas libres): descargar
+ * los documentos y llevarlos impresos, completos y firmados el día del evento.
  */
-export function BringDocumentsNotice({
-  locked = false,
-}: {
-  /** true mientras falten personas por registrar: todavía no se puede descargar. */
-  locked?: boolean;
-}) {
+export function BringDocumentsNotice({ kind }: { kind: RegistrationKind }) {
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
 
   useEffect(() => {
-    fetchTemplates(createClient()).then(setTemplates);
-  }, []);
+    fetchTemplates(createClient(), kind).then(setTemplates);
+  }, [kind]);
 
   return (
     <section
@@ -32,26 +28,21 @@ export function BringDocumentsNotice({
         Importante
       </p>
       <h3 id="bring-docs-title" className="font-display text-xl font-bold">
-        Lleva los documentos firmados el día del evento
+        Descarga estos documentos y llévalos el día del Open Day
       </h3>
       <p className="font-semibold">
-        No los subas aquí: imprímelos, fírmalos y llévalos en físico.{" "}
+        Imprímelos, complétalos y fírmalos.{" "}
         <span className="text-orange-ink">
-          Los escolares no podrán ingresar sin los documentos firmados.
+          Se revisan en la puerta: sin ellos no se permite el ingreso.
         </span>
       </p>
-      {locked && (
+      {templates.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          Podrás descargar las plantillas cuando registres a todas las personas.
+          Los documentos aún no están disponibles. Revisa Mi inscripción más
+          adelante o escríbenos por el chat.
         </p>
       )}
-      {!locked && templates.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          Las plantillas se están cargando. Si no aparecen, escríbenos y te las
-          enviamos.
-        </p>
-      )}
-      {!locked && templates.length > 0 && (
+      {templates.length > 0 && (
         <ul className="flex flex-wrap gap-3">
           {templates.map((template) => (
             <li key={template.kind}>
@@ -62,7 +53,7 @@ export function BringDocumentsNotice({
                 className="btn btn-spark"
               >
                 <ClipboardIcon className="size-5" />
-                Descargar {DOCUMENT_LABELS[template.kind].toLowerCase()}
+                Descargar {templateLabel(kind, template.kind).toLowerCase()}
               </a>
             </li>
           ))}

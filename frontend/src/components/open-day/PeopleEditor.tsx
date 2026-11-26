@@ -7,14 +7,8 @@ import { PlusIcon } from "@/components/site/Icons";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
-import { downloadCsv } from "@/lib/csv";
 import { DOC_TYPE_LABELS, ROLE_LABELS } from "@/lib/open-day/constants";
 import { isMinorOn } from "@/lib/open-day/format";
-import {
-  type ImportResult,
-  parsePeople,
-  peopleTemplateCsv,
-} from "@/lib/open-day/people-import";
 import { setAttendees, setExpectedVisitors } from "@/lib/open-day/rpc";
 import {
   docTypes,
@@ -39,7 +33,7 @@ type PeopleEditorProps = {
 };
 
 /** Cambia la cantidad de visitantes declarados sin volver al primer paso. */
-function VisitorsCountControl({
+export function VisitorsCountControl({
   event,
   registration,
   onChanged,
@@ -152,8 +146,8 @@ function initialPeople(registration: Registration): PersonValues[] {
 }
 
 /**
- * Lista de personas de la inscripción: formulario por fila o pegado desde
- * Excel/CSV. Se guarda completa con `set_attendees`, que reemplaza la lista.
+ * Lista de personas de una inscripción individual, una fila por persona. Se guarda
+ * completa con `set_attendees`. Los colegios usan `SchoolPeopleEditor`.
  */
 export function PeopleEditor({
   event,
@@ -162,7 +156,6 @@ export function PeopleEditor({
   save = (people) => setAttendees(registration.id, people),
   onVisitorsChanged,
 }: PeopleEditorProps) {
-  const isSchool = registration.kind === "school";
   const schema = useMemo(
     () =>
       peopleSchema({
@@ -184,7 +177,7 @@ export function PeopleEditor({
     resolver: zodResolver(schema),
     defaultValues: { people: initialPeople(registration) },
   });
-  const { fields, append, remove, replace } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: "people",
   });
@@ -193,13 +186,7 @@ export function PeopleEditor({
 
   const people = watch("people");
   const visitors = people.filter((p) => p.role === "visitor").length;
-  const chaperones = people.filter((p) => p.role === "chaperone").length;
   const adults = people.filter((p) => p.role !== "visitor").length;
-  // El mínimo se calcula sobre lo declarado, como `submit_registration`
-  const minChaperones = Math.ceil(
-    Math.max(visitors, registration.expectedVisitors) /
-      event.studentsPerChaperone,
-  );
   const minorVisitor = people.some(
     (p) =>
       p.role === "visitor" &&
@@ -230,44 +217,22 @@ export function PeopleEditor({
     await onSaved();
   }, showErrors);
 
-  const counters = isSchool
-    ? [
-        {
-          label: "Escolares",
-          value: `${visitors} de ${registration.expectedVisitors}`,
-          ok: visitors === registration.expectedVisitors,
-        },
-        {
-          label: "Acompañantes",
-          value: `${chaperones} (mínimo ${minChaperones})`,
-          ok: chaperones >= minChaperones,
-        },
-        ...(event.maxAdultsPerRegistration
-          ? [
-              {
-                label: "Acompañantes o tutores",
-                value: `${adults} de ${event.maxAdultsPerRegistration} como máximo`,
-                ok: adults <= event.maxAdultsPerRegistration,
-              },
-            ]
-          : []),
-      ]
-    : [
-        {
-          label: visitors === 1 ? "Visitante" : "Visitantes",
-          value: `${visitors} de ${registration.expectedVisitors}`,
-          ok: visitors === registration.expectedVisitors,
-        },
-        ...(minorVisitor
-          ? [
-              {
-                label: "Acompañante o tutor",
-                value: adults > 0 ? "Registrado" : "Obligatorio para menores",
-                ok: adults > 0,
-              },
-            ]
-          : []),
-      ];
+  const counters = [
+    {
+      label: visitors === 1 ? "Visitante" : "Visitantes",
+      value: `${visitors} de ${registration.expectedVisitors}`,
+      ok: visitors === registration.expectedVisitors,
+    },
+    ...(minorVisitor
+      ? [
+          {
+            label: "Acompañante o tutor",
+            value: adults > 0 ? "Registrado" : "Obligatorio para menores",
+            ok: adults > 0,
+          },
+        ]
+      : []),
+  ];
 
   const listError =
     (
@@ -280,11 +245,9 @@ export function PeopleEditor({
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-6">
       <p className="text-muted-foreground">
-        {isSchool
-          ? `Registra a los ${registration.expectedVisitors} escolares y a los profesores que los acompañan (al menos uno por cada ${event.studentsPerChaperone} escolares). Los acompañantes o tutores deben ser mayores de edad el día del evento.`
-          : registration.expectedVisitors === 1
-            ? "Registra tus datos. Si eres menor de edad el día del evento, agrega a un acompañante o tutor mayor de edad."
-            : `Registra a las ${registration.expectedVisitors} personas que asistirán. Si alguna es menor de edad el día del evento, agrega a un acompañante o tutor mayor de edad; los acompañantes y tutores no cuentan como visitantes.`}
+        {registration.expectedVisitors === 1
+          ? "Registra tus datos. Si eres menor de edad el día del evento, agrega a un acompañante o tutor mayor de edad."
+          : `Registra a las ${registration.expectedVisitors} personas que asistirán. Si alguna es menor de edad el día del evento, agrega a un acompañante o tutor mayor de edad; los acompañantes y tutores no cuentan como visitantes.`}
       </p>
 
       {onVisitorsChanged && (
@@ -311,16 +274,6 @@ export function PeopleEditor({
           </li>
         ))}
       </ul>
-
-      {isSchool && (
-        <ImportPanel
-          kind={registration.kind}
-          onImport={(imported, mode) => {
-            if (mode === "replace") replace(imported);
-            else append(imported);
-          }}
-        />
-      )}
 
       {fields.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border-2 border-border">
@@ -380,13 +333,7 @@ export function PeopleEditor({
                         {...register(`people.${index}.role`)}
                       >
                         <option value="visitor">{ROLE_LABELS.visitor}</option>
-                        {isSchool ? (
-                          <option value="chaperone">Acompañante</option>
-                        ) : (
-                          <option value="guardian">
-                            {ROLE_LABELS.guardian}
-                          </option>
-                        )}
+                        <option value="guardian">{ROLE_LABELS.guardian}</option>
                       </select>
                     </td>
                     <td className="grid gap-1.5 px-2 py-2">
@@ -444,9 +391,9 @@ export function PeopleEditor({
                         />
                       ) : (
                         <input
-                          aria-label={label(isSchool ? "Cargo" : "Parentesco")}
+                          aria-label={label("Parentesco")}
                           aria-invalid={Boolean(rowErrors?.relationship)}
-                          placeholder={isSchool ? "Profesor" : "Madre"}
+                          placeholder="Madre"
                           className={cellInput}
                           {...register(`people.${index}.relationship`)}
                         />
@@ -501,21 +448,19 @@ export function PeopleEditor({
           variant="ghost"
           size="sm"
           onClick={() => append(emptyPerson("visitor"))}
-          disabled={!isSchool && visitors >= registration.expectedVisitors}
+          disabled={visitors >= registration.expectedVisitors}
         >
           <PlusIcon className="size-4" />
-          {isSchool ? "Agregar escolar" : "Agregar visitante"}
+          Agregar visitante
         </Button>
-        {(isSchool || minorVisitor || adults > 0) && (
+        {(minorVisitor || adults > 0) && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() =>
-              append(emptyPerson(isSchool ? "chaperone" : "guardian"))
-            }
+            onClick={() => append(emptyPerson("guardian"))}
           >
             <PlusIcon className="size-4" />
-            {isSchool ? "Agregar acompañante" : "Agregar adulto acompañante"}
+            Agregar adulto acompañante
           </Button>
         )}
       </div>
@@ -594,131 +539,5 @@ function RowErrors({
         {items.length > 12 && <li>Y {items.length - 12} filas más.</li>}
       </ul>
     </Notice>
-  );
-}
-
-function ImportPanel({
-  kind,
-  onImport,
-}: {
-  kind: Registration["kind"];
-  onImport: (people: PersonValues[], mode: "append" | "replace") => void;
-}) {
-  const [text, setText] = useState("");
-  const [result, setResult] = useState<ImportResult | null>(null);
-
-  function downloadTemplate() {
-    downloadCsv("plantilla-personas-open-day.csv", peopleTemplateCsv(kind));
-  }
-
-  function apply(mode: "append" | "replace") {
-    if (!result || result.people.length === 0) return;
-    onImport(result.people, mode);
-    setText("");
-    setResult(null);
-  }
-
-  return (
-    <details className="rounded-lg border-2 border-dashed border-border p-4">
-      <summary className="cursor-pointer font-bold">
-        Pegar desde Excel o subir un CSV
-      </summary>
-      <div className="mt-4 grid gap-4">
-        <p className="text-sm text-muted-foreground">
-          Descarga la plantilla, llénala en Excel y copia las filas (con los
-          encabezados) para pegarlas aquí. También puedes subir el archivo CSV.
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={downloadTemplate}>
-            Descargar plantilla CSV
-          </Button>
-          <label className="btn btn-ghost btn-sm cursor-pointer">
-            Subir CSV
-            <input
-              type="file"
-              accept=".csv,text/csv,text/plain"
-              className="sr-only"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (!file) return;
-                const content = await file.text();
-                setText(content);
-                setResult(parsePeople(content));
-              }}
-            />
-          </label>
-        </div>
-        <label htmlFor="people-paste" className="font-semibold">
-          Filas copiadas
-        </label>
-        <textarea
-          id="people-paste"
-          rows={5}
-          value={text}
-          onChange={(event) => {
-            setText(event.target.value);
-            setResult(null);
-          }}
-          placeholder={
-            "Rol\tTipo de documento\tNúmero de documento\tNombres\tApellidos\tFecha de nacimiento…"
-          }
-          className={cn(fieldClasses, "font-mono text-xs")}
-        />
-        <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={text.trim() === ""}
-            onClick={() => setResult(parsePeople(text))}
-          >
-            Revisar filas
-          </Button>
-        </div>
-        {result && (
-          <div className="grid gap-3">
-            {result.errors.length > 0 && (
-              <Notice
-                tone="error"
-                title={
-                  result.errors.length === 1
-                    ? "1 fila con problemas (no se importa)"
-                    : `${result.errors.length} filas con problemas (no se importan)`
-                }
-              >
-                <ul className="grid gap-1">
-                  {result.errors.slice(0, 10).map((error) => (
-                    <li key={`${error.line}-${error.message}`}>
-                      Línea {error.line}: {error.message}
-                    </li>
-                  ))}
-                </ul>
-              </Notice>
-            )}
-            {result.people.length > 0 && (
-              <>
-                <Notice tone="success">
-                  {result.people.length === 1
-                    ? "1 persona lista para importar."
-                    : `${result.people.length} personas listas para importar.`}
-                </Notice>
-                <div className="flex flex-wrap gap-3">
-                  <Button size="sm" onClick={() => apply("replace")}>
-                    Reemplazar la lista
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => apply("append")}
-                  >
-                    Agregar a la lista
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </details>
   );
 }

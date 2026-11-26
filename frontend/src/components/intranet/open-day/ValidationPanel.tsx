@@ -32,10 +32,6 @@ type ValidationPanelProps = {
   registrationId: string;
   status: RegistrationStatus;
   documents: ValidationDocument[];
-  /** Documentos obligatorios que aún no se subieron. */
-  missing: DocumentKind[];
-  /** false en los colegios: llevan los documentos firmados el día del evento y no se suben. */
-  docsRequired: boolean;
   defaultGate: string;
   defaultArrival: string;
   defaultDeadline: string;
@@ -49,8 +45,6 @@ export function ValidationPanel({
   registrationId,
   status,
   documents,
-  missing,
-  docsRequired,
   defaultGate,
   defaultArrival,
   defaultDeadline,
@@ -78,10 +72,8 @@ export function ValidationPanel({
       missing: CHECKLISTS[doc.kind].filter((item) => !ticked.includes(item.id)),
     };
   });
-  const allChecked =
-    (documents.length > 0 || !docsRequired) &&
-    missing.length === 0 &&
-    failures.every((f) => f.missing.length === 0);
+  // El PDF es opcional: sin archivos no hay nada que marcar
+  const allChecked = failures.every((f) => f.missing.length === 0);
   const toObserve = failures.filter((f) => f.missing.length > 0);
   const observation = composeObservation(
     toObserve.map((f) => ({
@@ -127,7 +119,7 @@ export function ValidationPanel({
       className="grid gap-5 rounded-lg border-2 border-border bg-surface p-5 sm:p-6"
     >
       <Heading id="validacion" variant="item" level={2}>
-        Validación de documentos
+        Validación de la inscripción
       </Heading>
 
       {!canValidate && (
@@ -137,19 +129,25 @@ export function ValidationPanel({
             : "Se valida cuando la inscripción está enviada. Mientras tanto puedes ver los documentos."}
         </Notice>
       )}
-      {missing.length > 0 && (
-        <Notice tone="warning" title="Faltan documentos">
-          {missing.map((kind) => DOCUMENT_LABELS[kind]).join(", ")}.
+      {canValidate && (
+        <Notice tone="info" title="Qué revisar antes de aceptar">
+          <ul className="grid list-disc gap-1 pl-5">
+            <li>Los datos de contacto y de los tutores o asistentes.</li>
+            <li>La cantidad de personas y los recorridos elegidos.</li>
+            <li>El PDF, solo si lo subieron.</li>
+            <li>
+              Los documentos firmados se reciben en físico; puedes marcarlos
+              ahora o en la puerta.
+            </li>
+          </ul>
         </Notice>
       )}
 
-      {!docsRequired && documents.length === 0 ? (
-        <Notice tone="info">
-          Los colegios no suben documentos: los llevan firmados el día del
-          evento y se verifican en la puerta.
+      {documents.length === 0 ? (
+        <Notice tone="warning" title="No subieron el PDF">
+          Es opcional: puedes aceptar la inscripción igual. Los documentos
+          firmados se reciben en físico.
         </Notice>
-      ) : documents.length === 0 ? (
-        <p className="text-muted-foreground">Aún no hay documentos subidos.</p>
       ) : (
         <ul className="grid gap-4">
           {documents.map((doc) => (
@@ -199,7 +197,7 @@ export function ValidationPanel({
       {done && <Notice tone="success">{done}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 
-      {canValidate && (documents.length > 0 || !docsRequired) && (
+      {canValidate && (
         <div className="grid gap-6 lg:grid-cols-2">
           <div
             className={cn(
@@ -211,9 +209,11 @@ export function ValidationPanel({
               Confirmar
             </Heading>
             <p className="text-sm text-muted-foreground">
-              {allChecked
-                ? "Todo está en orden. Al confirmar se generan los códigos y se envía el correo."
-                : "Marca todos los puntos de cada documento para confirmar."}
+              {documents.length === 0
+                ? "Aceptarás sin PDF. Al confirmar se generan los códigos y se envía el correo."
+                : allChecked
+                  ? "Todo está en orden. Al confirmar se generan los códigos y se envía el correo."
+                  : "Marca todos los puntos de cada documento para confirmar."}
             </p>
             <label className="grid gap-1 text-sm font-semibold">
               Puerta de ingreso
@@ -263,7 +263,9 @@ export function ValidationPanel({
                 )
               }
             >
-              Confirmar inscripción
+              {documents.length === 0
+                ? "Aceptar sin documentos"
+                : "Confirmar inscripción"}
             </Button>
           </div>
 
@@ -274,7 +276,7 @@ export function ValidationPanel({
             <p className="text-sm text-muted-foreground">
               {toObserve.length > 0
                 ? `Se observarán: ${toObserve.map((f) => DOCUMENT_LABELS[f.doc.kind]).join(", ")}.`
-                : "Desmarca lo que no cumple para observar ese documento."}
+                : "Escribe las indicaciones. Llegan por correo y quedan en el chat."}
             </p>
             {observation && (
               <div className="rounded-md bg-background px-3 py-2 text-sm whitespace-pre-line">
@@ -282,7 +284,7 @@ export function ValidationPanel({
               </div>
             )}
             <label className="grid gap-1 text-sm font-semibold">
-              Notas para quien se inscribió (opcional)
+              Indicaciones para quien se inscribió
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -302,7 +304,7 @@ export function ValidationPanel({
             </label>
             <Button
               variant="ghost"
-              disabled={toObserve.length === 0 || pending || !deadline}
+              disabled={observation.length < 10 || pending || !deadline}
               aria-busy={pending}
               onClick={() =>
                 run(
@@ -317,7 +319,7 @@ export function ValidationPanel({
                 )
               }
             >
-              Enviar observación
+              Enviar indicaciones
             </Button>
           </div>
         </div>

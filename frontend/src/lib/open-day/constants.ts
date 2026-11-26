@@ -8,7 +8,7 @@ import type {
 } from "./types";
 
 /** Versión del aviso de privacidad y la declaración que se acepta al enviar. */
-export const TERMS_VERSION = "2026-1";
+export const TERMS_VERSION = "2026-4";
 
 export const OPEN_DAY_ROUTES = {
   selector: "/provov/open-day/inscripcion",
@@ -42,9 +42,10 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
 };
 
 export const DOCUMENT_LABELS: Record<DocumentKind | "credentials", string> = {
-  school_consolidated: "Consolidado del colegio (un solo PDF)",
-  consent: "Autorización de uso de datos",
-  guardian_declaration: "Declaración del apoderado",
+  school_consolidated: "Cartas del colegio (un solo PDF)",
+  individual_consolidated: "Documentos firmados (un solo PDF)",
+  consent: "Autorización de uso de imagen",
+  guardian_declaration: "Cuidado de instalaciones y bienes",
   commitment_letter: "Carta de compromiso",
   credentials: "Códigos de acceso",
 };
@@ -54,7 +55,7 @@ export const STATUS_LABELS: Record<RegistrationStatus, string> = {
   held: "Recorridos retenidos",
   reserved: "Recorridos reservados",
   submitted: "Enviada, en revisión",
-  docs_observed: "Documentos observados",
+  docs_observed: "Con observaciones",
   confirmed: "Confirmada",
   needs_reassignment: "Requiere elegir otro recorrido",
   expired: "Vencida",
@@ -85,16 +86,12 @@ export const ACTIVE_STATUSES: RegistrationStatus[] = [
   "needs_reassignment",
 ];
 
-/** Documentos obligatorios según el tipo de inscripción y la edad del visitante. */
-export function requiredDocuments(
-  kind: "school" | "individual",
-  minorVisitor: boolean,
-): DocumentKind[] {
-  // Los colegios no suben documentos: los llevan firmados el día del evento
-  if (kind === "school") return [];
-  return minorVisitor
-    ? ["consent", "commitment_letter", "guardian_declaration"]
-    : ["consent", "commitment_letter"];
+/**
+ * El PDF que se puede subir según el tipo de inscripción. Es opcional: los
+ * documentos firmados se llevan impresos el día del evento en cualquier caso.
+ */
+export function uploadKind(kind: "school" | "individual"): DocumentKind {
+  return kind === "school" ? "school_consolidated" : "individual_consolidated";
 }
 
 /** Enlace de descarga directa de una plantilla compartida en Drive. */

@@ -10,12 +10,17 @@ import { Notice } from "./Notice";
 
 type SubmitStepProps = {
   registration: Registration;
+  /** Si ya se aceptaron las tres declaraciones. */
+  canSubmit: boolean;
   onSubmitted: () => Promise<unknown>;
 };
 
-/** Aceptación del aviso de privacidad y envío final (`submit_registration`). */
-export function SubmitStep({ registration, onSubmitted }: SubmitStepProps) {
-  const [accepted, setAccepted] = useState(false);
+/** Envío final (`submit_registration`); guarda la versión de las condiciones aceptadas. */
+export function SubmitStep({
+  registration,
+  canSubmit,
+  onSubmitted,
+}: SubmitStepProps) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,14 +39,12 @@ export function SubmitStep({ registration, onSubmitted }: SubmitStepProps) {
   return (
     <div className="grid gap-5">
       <p className="text-muted-foreground">
-        {registration.kind === "school"
-          ? "Revisaremos tu inscripción y te escribiremos a "
-          : "Revisaremos los documentos y te escribiremos a "}
+        Revisaremos tu inscripción y te escribiremos a{" "}
         <strong className="text-foreground">{registration.contactEmail}</strong>
         .{" "}
         {registration.kind === "school"
-          ? "Después de enviar, ya no podrás cambiar la lista de personas. Recuerda llevar los documentos firmados el día del evento: sin ellos no podrán ingresar."
-          : "Después de enviar, ya no podrás cambiar la lista de personas; solo reemplazar documentos si te los observamos."}
+          ? "Hasta que la aceptemos podrás cambiar los tutores y la cantidad de escolares desde Mi inscripción."
+          : "Después de enviar, ya no podrás cambiar la lista de personas."}
       </p>
       {registration.docsDeadline && (
         <p className="text-sm">
@@ -49,22 +52,19 @@ export function SubmitStep({ registration, onSubmitted }: SubmitStepProps) {
           <strong>{formatDateTime(registration.docsDeadline)}</strong>
         </p>
       )}
-      <label className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          checked={accepted}
-          onChange={(event) => setAccepted(event.target.checked)}
-          className="mt-1 size-5 shrink-0 accent-magenta"
-        />
-        <span>
-          Acepto el aviso de privacidad para el uso de los datos registrados y
-          declaro que la información es verdadera y que cuento con la
-          autorización de las personas inscritas.
-        </span>
-      </label>
+      <p className="text-sm text-muted-foreground">
+        Al enviar confirmas que la información es verdadera, que cuentas con la
+        autorización de las personas inscritas y que aceptas el aviso de
+        privacidad para el uso de sus datos.
+      </p>
+      {!canSubmit && (
+        <Notice tone="warning">
+          Primero acepta las tres declaraciones del paso de condiciones.
+        </Notice>
+      )}
       {error && <Notice tone="error">{error}</Notice>}
       <div>
-        <Button bolt disabled={!accepted || sending} onClick={submit}>
+        <Button bolt disabled={!canSubmit || sending} onClick={submit}>
           {sending ? "Enviando…" : "Enviar inscripción"}
         </Button>
       </div>

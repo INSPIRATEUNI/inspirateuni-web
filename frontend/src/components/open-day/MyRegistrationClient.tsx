@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { DocumentsStep } from "./DocumentsStep";
 import { Notice } from "./Notice";
 import { OtpStep } from "./OtpStep";
+import { SchoolPeopleEditor } from "./SchoolPeopleEditor";
 
 /** Acceso a "Mi inscripción" para quien vuelve: correo y código nuevo. */
 export function MyRegistrationLogin() {
@@ -64,6 +65,10 @@ export function ObservedDocuments({
 
   return (
     <div className="grid gap-4">
+      <Notice tone="warning" title="Tienes observaciones del equipo">
+        Léelas en los mensajes de abajo; puedes responder ahí mismo. Cuando esté
+        listo, envía de nuevo tu inscripción a revisión.
+      </Notice>
       <DocumentsStep
         event={event}
         registration={registration}
@@ -77,6 +82,61 @@ export function ObservedDocuments({
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Colegios: cambiar tutores y cantidad de escolares mientras no se acepta. */
+export function EditSchoolPeople({
+  event,
+  registration,
+}: {
+  event: OpenDayEvent;
+  registration: Registration;
+}) {
+  const router = useRouter();
+  const reload = async () => router.refresh();
+  return (
+    <details className="rounded-lg border-2 border-border p-4">
+      <summary className="cursor-pointer font-bold">
+        Cambiar tutores o cantidad de escolares
+      </summary>
+      <div className="mt-4">
+        <SchoolPeopleEditor
+          key={registration.expectedVisitors}
+          event={event}
+          registration={registration}
+          onSaved={reload}
+          onVisitorsChanged={reload}
+        />
+      </div>
+    </details>
+  );
+}
+
+/** Subida opcional del PDF después de enviar o de ser aceptado. */
+export function LateDocuments({
+  event,
+  registration,
+}: {
+  event: OpenDayEvent;
+  registration: Registration;
+}) {
+  const router = useRouter();
+  return (
+    <details className="rounded-lg border-2 border-border p-4">
+      <summary className="cursor-pointer font-bold">
+        {registration.documents.length === 0
+          ? "Subir el PDF de documentos (opcional)"
+          : "Reemplazar el PDF de documentos"}
+      </summary>
+      <div className="mt-4">
+        <DocumentsStep
+          event={event}
+          registration={registration}
+          onChanged={async () => router.refresh()}
+        />
+      </div>
+    </details>
   );
 }
 

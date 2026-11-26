@@ -151,6 +151,103 @@ export const personSchema = z
   });
 export type PersonValues = z.infer<typeof personSchema>;
 
+/** Representante del colegio; su nombre, correo y celular ya son los del contacto. */
+export const representativeSchema = z
+  .object({
+    role: z
+      .string()
+      .trim()
+      .min(2, "Escribe su cargo (director, coordinador, profesor…).")
+      .max(60),
+    docType: z.enum(docTypes, "Elige el tipo de documento."),
+    docNumber: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .min(4, "Escribe el número de documento.")
+      .max(20, "El documento es demasiado largo."),
+    attends: z.boolean(),
+  })
+  .superRefine((rep, ctx) => {
+    if (rep.docType === "dni" && !/^\d{8}$/.test(rep.docNumber)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["docNumber"],
+        message: "El DNI tiene 8 dígitos.",
+      });
+    }
+  });
+export type RepresentativeValues = z.infer<typeof representativeSchema>;
+
+/**
+ * Representante y tutores de un colegio (`save_school_people`). Los escolares no
+ * se registran. Exige al menos un tutor, contando al representante si asiste.
+ */
+export function schoolPeopleSchema(eventDate: string) {
+  return z
+    .object({
+      representative: representativeSchema,
+      people: z.array(personSchema),
+    })
+    .superRefine(({ representative, people }, ctx) => {
+      if (people.length === 0 && !representative.attends) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["people"],
+          message:
+            "Registra al menos un tutor, o marca que el representante asistirá.",
+        });
+      }
+      const seen = new Map<string, number>();
+      people.forEach((person, index) => {
+        const doc = person.docNumber.trim().toUpperCase();
+        const key = `${person.docType}:${doc}`;
+        const first = seen.get(key);
+        if (first !== undefined) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["people", index, "docNumber"],
+            message: `Este documento ya está en la fila ${first + 1}.`,
+          });
+        } else {
+          seen.set(key, index);
+        }
+        if (
+          representative.attends &&
+          key ===
+            `${representative.docType}:${representative.docNumber.trim().toUpperCase()}`
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["people", index, "docNumber"],
+            message: "El representante ya cuenta como tutor: quita esta fila.",
+          });
+        }
+        if (
+          ISO_DATE.test(person.birthDate) &&
+          ageOn(person.birthDate, eventDate) < 18
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["people", index, "birthDate"],
+            message: "Los tutores deben ser mayores de edad el día del evento.",
+          });
+        }
+        if (person.phone.trim() === "") {
+          ctx.addIssue({
+            code: "custom",
+            path: ["people", index, "phone"],
+            message: "Escribe su celular.",
+          });
+        }
+      });
+    });
+}
+export type SchoolPeopleValues = {
+  representative: RepresentativeValues;
+  people: PersonValues[];
+};
+
 /**
  * Lista de personas de una inscripción. Valida en el cliente lo mismo que
  * `set_attendees`/`submit_registration` (edad de los adultos en la fecha del

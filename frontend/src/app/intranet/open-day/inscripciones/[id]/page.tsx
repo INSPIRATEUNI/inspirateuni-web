@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { AdminPanel } from "@/components/intranet/open-day/AdminPanel";
 import { DocumentButton } from "@/components/intranet/open-day/DocumentButton";
+import { PhysicalDocuments } from "@/components/intranet/open-day/PhysicalDocuments";
 import {
   type ValidationDocument,
   ValidationPanel,
@@ -12,13 +13,14 @@ import { ChatBox } from "@/components/open-day/ChatBox";
 import { Heading } from "@/components/ui/Heading";
 import { Tag } from "@/components/ui/Tag";
 import { getCurrentUser } from "@/lib/intranet/user";
+import { conditionsFor } from "@/lib/open-day/conditions";
 import {
   DOC_TYPE_LABELS,
   DOCUMENT_LABELS,
   ROLE_LABELS,
-  requiredDocuments,
   STATUS_LABELS,
   STATUS_TONES,
+  TERMS_VERSION,
   TIER_LABELS,
 } from "@/lib/open-day/constants";
 import { fetchEvent, fetchRegistration } from "@/lib/open-day/data";
@@ -28,8 +30,8 @@ import {
   formatGate,
   formatTime,
   formatTimeRange,
-  isMinorOn,
 } from "@/lib/open-day/format";
+import { tutorCount } from "@/lib/open-day/people";
 import { toLimaInput, toLimaTime } from "@/lib/open-day/staff/dates";
 import { fetchRegistrationExtras } from "@/lib/open-day/staff/queries";
 import type { DocumentKind } from "@/lib/open-day/types";
@@ -52,7 +54,7 @@ const EVENT_LABELS: Record<string, string> = {
   submitted: "Envió la inscripción",
   resubmitted: "Reenvió tras la observación",
   confirmed: "Confirmó la inscripción",
-  docs_observed: "Observó documentos",
+  docs_observed: "Envió observaciones",
   session_cancelled: "Se canceló un recorrido",
   expired: "Venció el plazo",
   override_reopen: "Reabrió (admin)",
@@ -63,10 +65,13 @@ const EVENT_LABELS: Record<string, string> = {
   credentials_generated: "Se generaron los códigos",
   document_viewed: "Vio un documento",
   checked_in: "Registró un ingreso",
+  documents_received: "Recibió los documentos en físico",
+  documents_verified: "Validó el PDF",
 };
 
 const UPLOAD_KINDS: DocumentKind[] = [
   "school_consolidated",
+  "individual_consolidated",
   "consent",
   "guardian_declaration",
   "commitment_letter",
@@ -94,9 +99,6 @@ export default async function RegistrationDetailPage({
   ]);
   if (!event) notFound();
 
-  const minorVisitor = registration.attendees.some(
-    (a) => a.role === "visitor" && isMinorOn(a.birthDate, event.eventDate),
-  );
   const current = extras.documents.filter((d) => !d.supersededAt);
   const validationDocs: ValidationDocument[] = current
     .filter((d): d is typeof d & { kind: DocumentKind } =>
@@ -110,9 +112,6 @@ export default async function RegistrationDetailPage({
       observation: d.observation,
       verifiedAt: d.verifiedAt,
     }));
-  const missing = requiredDocuments(registration.kind, minorVisitor).filter(
-    (kind) => !validationDocs.some((d) => d.kind === kind),
-  );
   const older = extras.documents.filter((d) => d.supersededAt);
   const credentials = current.filter((d) => d.kind === "credentials");
 
@@ -135,6 +134,10 @@ export default async function RegistrationDetailPage({
   const visitors = registration.attendees.filter(
     (a) => a.role === "visitor",
   ).length;
+  // De un colegio solo interesan los tutores: los escolares no se registran
+  const listed = registration.attendees.filter(
+    (a) => registration.kind !== "school" || a.role === "chaperone",
+  );
 
   return (
     <div className="grid gap-8">
@@ -167,10 +170,15 @@ export default async function RegistrationDetailPage({
 
       <dl className="grid gap-4 rounded-lg border-2 border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          [
-            "Visitantes",
-            `${visitors} de ${registration.expectedVisitors} declarados`,
-          ],
+          registration.kind === "school"
+            ? [
+                "Escolares y tutores",
+                `${registration.expectedVisitors} escolares · ${tutorCount(registration)} tutores`,
+              ]
+            : [
+                "Visitantes",
+                `${visitors} de ${registration.expectedVisitors} declarados`,
+              ],
           [
             "Enviada",
             registration.submittedAt
@@ -201,14 +209,45 @@ export default async function RegistrationDetailPage({
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="grid min-w-0 content-start gap-8">
+          {!["expired", "cancelled"].includes(registration.status) && (
+            <PhysicalDocuments
+              registrationId={registration.id}
+              receivedAt={registration.docsReceivedAt}
+              canReceive={["submitted", "docs_observed", "confirmed"].includes(
+                registration.status,
+              )}
+              unverifiedPdf={
+                registration.status === "confirmed" &&
+                validationDocs.some((d) => !d.verifiedAt)
+              }
+            />
+          )}
+
+          {registration.acceptedTermsAt && (
+            <section className="grid gap-2 rounded-lg border-2 border-border bg-surface p-5">
+              <Heading variant="item" level={2}>
+                Condiciones aceptadas
+              </Heading>
+              <p className="text-sm text-muted-foreground">
+                {formatDateTime(registration.acceptedTermsAt)} · versión{" "}
+                {registration.termsVersion}
+              </p>
+              {registration.termsVersion === TERMS_VERSION ? (
+                <ul className="grid gap-1">
+                  {conditionsFor(registration.kind, false).map((c) => (
+                    <li key={c.template}>✔ {c.title}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>Se envió con una versión anterior de las condiciones.</p>
+              )}
+            </section>
+          )}
+
           <ValidationPanel
             registrationId={registration.id}
             status={registration.status}
             documents={validationDocs}
-            missing={missing}
-            docsRequired={
-              requiredDocuments(registration.kind, minorVisitor).length > 0
-            }
             defaultGate={registration.gate ?? ""}
             defaultArrival={defaultArrival}
             defaultDeadline={defaultDeadline}
@@ -239,11 +278,41 @@ export default async function RegistrationDetailPage({
             </section>
           )}
 
+          {registration.kind === "school" && (
+            <section className="grid gap-2 rounded-lg border-2 border-border bg-surface p-5">
+              <Heading variant="item" level={2}>
+                Representante
+              </Heading>
+              <p className="font-semibold">{registration.contactName}</p>
+              <p className="text-sm text-muted-foreground">
+                {registration.representativeRole
+                  ? `${registration.representativeRole} · ${DOC_TYPE_LABELS[registration.representativeDocType ?? "dni"]} ${registration.representativeDocNumber}`
+                  : "Aún no completa cargo y documento."}
+                {registration.representativeAttends
+                  ? " · Asiste y cuenta como tutor"
+                  : " · No figura como asistente"}
+              </p>
+              {extras.groupPass && (
+                <p className="text-sm">
+                  Código del colegio:{" "}
+                  <strong className="font-mono">
+                    {extras.groupPass.status === "active"
+                      ? extras.groupPass.accessCode
+                      : "revocado"}
+                  </strong>
+                  {extras.groupPass.checkedInAt &&
+                    ` · ingresó a las ${formatTime(extras.groupPass.checkedInAt)}`}
+                </p>
+              )}
+            </section>
+          )}
+
           <section className="grid gap-3">
             <Heading variant="item" level={2}>
-              Personas ({registration.attendees.length})
+              {registration.kind === "school" ? "Tutores" : "Personas"} (
+              {listed.length})
             </Heading>
-            {registration.attendees.length === 0 ? (
+            {listed.length === 0 ? (
               <p className="text-muted-foreground">Aún no registra personas.</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border-2 border-border bg-surface">
@@ -271,7 +340,7 @@ export default async function RegistrationDetailPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {registration.attendees.map((a) => {
+                    {listed.map((a) => {
                       const pass = passByParticipant.get(a.participantId);
                       return (
                         <tr key={a.participantId}>

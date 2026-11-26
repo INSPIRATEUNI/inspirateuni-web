@@ -21,10 +21,28 @@ const signed = { id: "firmas", label: "Tiene todas las firmas" };
 export const CHECKLISTS: Record<DocumentKind, ChecklistItem[]> = {
   school_consolidated: [
     readable,
-    { id: "personas", label: "Incluye a todas las personas de la lista" },
-    matches,
+    {
+      id: "personas",
+      label: "Corresponde a la cantidad de escolares y tutores declarados",
+    },
     { id: "firmas", label: "Tiene las firmas y el sello del colegio" },
     template,
+  ],
+  individual_consolidated: [
+    readable,
+    template,
+    {
+      id: "personas",
+      label:
+        "Incluye la autorización y la carta de compromiso de todas las personas",
+    },
+    {
+      id: "apoderado",
+      label:
+        "Si hay menores, incluye la declaración del apoderado (o no hay menores)",
+    },
+    matches,
+    signed,
   ],
   consent: [readable, template, matches, signed],
   guardian_declaration: [

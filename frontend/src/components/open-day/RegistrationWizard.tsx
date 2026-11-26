@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { GradientText } from "@/components/ui/GradientText";
 import { Heading } from "@/components/ui/Heading";
 import { Text } from "@/components/ui/Text";
+import { conditionsFor } from "@/lib/open-day/conditions";
 import {
   ACTIVE_STATUSES,
   OPEN_DAY_ROUTES,
@@ -22,24 +23,30 @@ import {
   TIER_LABELS,
 } from "@/lib/open-day/constants";
 import { fetchMyRegistrations, isRegistrationOpen } from "@/lib/open-day/data";
-import { formatDateTime, formatTimeRange } from "@/lib/open-day/format";
-import { peopleComplete } from "@/lib/open-day/people";
+import {
+  formatDateTime,
+  formatTimeRange,
+  isMinorOn,
+} from "@/lib/open-day/format";
+import { peopleComplete, tutorCount } from "@/lib/open-day/people";
 import type {
   LogisticsOption,
   OpenDayEvent,
   Registration,
   RegistrationKind,
+  TemplateKind,
 } from "@/lib/open-day/types";
 import { createClient } from "@/lib/supabase/client";
 import { BringDocumentsNotice } from "./BringDocumentsNotice";
 import { ChatBox } from "./ChatBox";
+import { ConditionsStep } from "./ConditionsStep";
 import { IndividualDetailsStep, SchoolDetailsStep } from "./DetailsStep";
-import { DocumentsStep, documentsComplete } from "./DocumentsStep";
 import { useAvailability, useRegistration, useSessionUser } from "./hooks";
 import { LogisticsStep } from "./LogisticsStep";
 import { Notice } from "./Notice";
 import { OtpStep } from "./OtpStep";
 import { PeopleEditor } from "./PeopleEditor";
+import { SchoolPeopleEditor } from "./SchoolPeopleEditor";
 import { Stepper, type StepStatus, type WizardStep } from "./Stepper";
 import { SubmitStep } from "./SubmitStep";
 import { TourPicker } from "./TourPicker";
@@ -52,21 +59,15 @@ type RegistrationWizardProps = {
   registrationId: string | null;
 };
 
-type ReservedPhase = "people" | "documents" | "logistics" | "submit";
+type ReservedPhase = "people" | "conditions" | "logistics" | "submit";
 
 const SELECTION_STATUSES = new Set(["draft", "held", "needs_reassignment"]);
 const FINAL_STATUSES = new Set(["submitted", "docs_observed", "confirmed"]);
 
 /** Primer paso pendiente dentro de una inscripción reservada. */
-function firstPendingPhase(
-  event: OpenDayEvent,
-  registration: Registration,
-): ReservedPhase {
-  if (!peopleComplete(event, registration)) return "people";
-  if (!documentsComplete(event, registration)) return "documents";
-  if (registration.kind === "school" && registration.logistics.length === 0)
-    return "logistics";
-  return "submit";
+function firstPendingPhase(registration: Registration): ReservedPhase {
+  // Las declaraciones se aceptan en la misma sesión en que se envía
+  return peopleComplete(registration) ? "conditions" : "people";
 }
 
 /**
@@ -88,6 +89,7 @@ export function RegistrationWizard({
     signedIn,
   );
   const [phase, setPhase] = useState<ReservedPhase | null>(null);
+  const [accepted, setAccepted] = useState<TemplateKind[]>([]);
   const [existing, setExisting] = useState<Registration[]>([]);
   const route =
     kind === "school" ? OPEN_DAY_ROUTES.schools : OPEN_DAY_ROUTES.individuals;
@@ -96,11 +98,11 @@ export function RegistrationWizard({
   // Tras reservar, el paso inicial es el primero que falta
   useEffect(() => {
     if (registration?.status === "reserved") {
-      setPhase((current) => current ?? firstPendingPhase(event, registration));
+      setPhase((current) => current ?? firstPendingPhase(registration));
     } else {
       setPhase(null);
     }
-  }, [registration, event]);
+  }, [registration]);
 
   // Inscripciones en curso del mismo tipo, para no crear una duplicada
   useEffect(() => {
@@ -177,6 +179,7 @@ export function RegistrationWizard({
             <Button onClick={() => goTo(null)}>Empezar de nuevo</Button>
           </div>
         )}
+        <ChatBox registrationId={registration.id} perspective="owner" />
       </div>
     );
   }
@@ -185,7 +188,8 @@ export function RegistrationWizard({
     return (
       <div className="grid gap-6">
         <SubmittedPanel registration={registration} />
-        {isSchool && status !== "confirmed" && <BringDocumentsNotice />}
+        <BringDocumentsNotice kind={registration.kind} />
+        <ChatBox registrationId={registration.id} perspective="owner" />
       </div>
     );
   }
@@ -199,7 +203,7 @@ export function RegistrationWizard({
     "details",
     "tours",
     "people",
-    "documents",
+    "conditions",
     ...(isSchool ? ["logistics"] : []),
     "submit",
   ];
@@ -230,6 +234,15 @@ export function RegistrationWizard({
         Editar
       </button>
     ) : null;
+
+  const hasMinors = Boolean(
+    registration?.attendees.some(
+      (a) => a.birthDate && isMinorOn(a.birthDate, event.eventDate),
+    ),
+  );
+  const allAccepted = conditionsFor(kind, hasMinors).every((c) =>
+    accepted.includes(c.template),
+  );
 
   const visitors =
     registration?.attendees.filter((a) => a.role === "visitor").length ?? 0;
@@ -331,52 +344,64 @@ export function RegistrationWizard({
     },
     {
       id: "people",
-      title: isSchool ? "Escolares y acompañantes" : "Visitantes",
+      title: isSchool ? "Representante y tutores" : "Visitantes",
       icon: <UsersIcon />,
       status: stepStatus(3, current),
       lockedHint: "Se habilita al confirmar los recorridos.",
-      content: registration && (
-        <PeopleEditor
-          event={event}
-          registration={registration}
-          onVisitorsChanged={reload}
-          onSaved={async () => {
-            const fresh = await reload();
-            if (fresh && peopleComplete(event, fresh)) setPhase("documents");
-          }}
-        />
-      ),
+      content:
+        registration &&
+        (isSchool ? (
+          <SchoolPeopleEditor
+            event={event}
+            registration={registration}
+            onVisitorsChanged={reload}
+            onSaved={async () => {
+              const fresh = await reload();
+              setAccepted([]);
+              if (fresh && peopleComplete(fresh)) setPhase("conditions");
+            }}
+          />
+        ) : (
+          <PeopleEditor
+            event={event}
+            registration={registration}
+            onVisitorsChanged={reload}
+            onSaved={async () => {
+              const fresh = await reload();
+              setAccepted([]);
+              if (fresh && peopleComplete(fresh)) setPhase("conditions");
+            }}
+          />
+        )),
       summary: registration && (
         <>
           <p>
-            {visitors} {visitors === 1 ? "visitante" : "visitantes"} y {adults}{" "}
-            {adults === 1 ? "adulto" : "adultos"}.
+            {isSchool
+              ? `${registration.expectedVisitors} escolares y ${tutorCount(registration)} ${tutorCount(registration) === 1 ? "tutor" : "tutores"}.`
+              : `${visitors} ${visitors === 1 ? "visitante" : "visitantes"} y ${adults} ${adults === 1 ? "adulto" : "adultos"}.`}
           </p>
           {editButton("people")}
         </>
       ),
     },
     {
-      id: "documents",
-      title: isSchool ? "Descarga las plantillas" : "Plantillas y documentos",
+      id: "conditions",
+      title: "Acepta las condiciones",
       icon: <ClipboardIcon />,
-      status: stepStatus(order.indexOf("documents"), current),
+      status: stepStatus(order.indexOf("conditions"), current),
       lockedHint: "Se habilita al registrar a las personas.",
       content: registration && (
         <div className="grid gap-5">
-          {isSchool ? (
-            <BringDocumentsNotice />
-          ) : (
-            <DocumentsStep
-              event={event}
-              registration={registration}
-              onChanged={reload}
-            />
-          )}
+          <ConditionsStep
+            kind={registration.kind}
+            hasMinors={hasMinors}
+            accepted={accepted}
+            onChange={setAccepted}
+          />
           <div className="flex flex-wrap gap-3">
             {backButton("people")}
             <Button
-              disabled={!documentsComplete(event, registration)}
+              disabled={!allAccepted}
               onClick={() => setPhase(isSchool ? "logistics" : "submit")}
             >
               Continuar
@@ -386,14 +411,8 @@ export function RegistrationWizard({
       ),
       summary: registration && (
         <>
-          <p>
-            {isSchool
-              ? "Lleva los documentos firmados el día del evento."
-              : registration.documents.length === 1
-                ? "1 documento subido."
-                : `${registration.documents.length} documentos subidos.`}
-          </p>
-          {editButton("documents")}
+          <p>Aceptaste las tres declaraciones.</p>
+          {editButton("conditions")}
         </>
       ),
     },
@@ -414,7 +433,7 @@ export function RegistrationWizard({
                     setPhase("submit");
                   }}
                 />
-                <div>{backButton("documents")}</div>
+                <div>{backButton("conditions")}</div>
               </div>
             ),
             summary: registration && (
@@ -442,8 +461,12 @@ export function RegistrationWizard({
       status: stepStatus(order.length - 1, current),
       content: registration && (
         <div className="grid gap-5">
-          <SubmitStep registration={registration} onSubmitted={reload} />
-          <div>{backButton(isSchool ? "logistics" : "documents")}</div>
+          <SubmitStep
+            registration={registration}
+            canSubmit={allAccepted}
+            onSubmitted={reload}
+          />
+          <div>{backButton(isSchool ? "logistics" : "conditions")}</div>
         </div>
       ),
     },
@@ -459,18 +482,11 @@ export function RegistrationWizard({
           </span>
         </Notice>
       )}
-      {isSchool &&
-        registration &&
-        currentId !== "documents" &&
-        ["draft", "held", "reserved"].includes(registration.status) && (
-          <BringDocumentsNotice locked={!peopleComplete(event, registration)} />
-        )}
       {registration?.status === "reserved" && registration.docsDeadline && (
         <Notice tone="info">
           Tienes hasta el{" "}
           <strong>{formatDateTime(registration.docsDeadline)}</strong> para
-          registrar a las personas{!isSchool && ", subir los documentos"} y
-          enviar. Puedes cerrar esta página y volver desde{" "}
+          completar los datos y enviar. Puedes cerrar esta página y volver desde{" "}
           <a href={OPEN_DAY_ROUTES.mine} className="font-bold underline">
             Mi inscripción
           </a>
@@ -478,10 +494,9 @@ export function RegistrationWizard({
         </Notice>
       )}
       <Stepper steps={steps} />
-      {registration &&
-        ["draft", "held", "reserved"].includes(registration.status) && (
-          <ChatBox registrationId={registration.id} perspective="owner" />
-        )}
+      {registration && (
+        <ChatBox registrationId={registration.id} perspective="owner" />
+      )}
     </div>
   );
 }
@@ -538,8 +553,8 @@ function SubmittedPanel({
             </>
           ) : observed ? (
             <>
-              Revisa tus{" "}
-              <GradientText gradient="fresh">documentos</GradientText>.
+              Revisa las{" "}
+              <GradientText gradient="fresh">observaciones</GradientText>.
             </>
           ) : (
             <>
@@ -552,8 +567,8 @@ function SubmittedPanel({
           {confirmed
             ? "Tu inscripción está confirmada. Ya puedes ver e imprimir los códigos de acceso."
             : observed
-              ? "Observamos uno o más documentos. Reemplázalos desde Mi inscripción para que sigamos con la revisión."
-              : `Código ${registration.referenceCode}. Revisaremos los documentos y te escribiremos a ${registration.contactEmail}.`}
+              ? "Tenemos observaciones sobre tu inscripción. Léelas en los mensajes y envíala de nuevo desde Mi inscripción."
+              : `Código ${registration.referenceCode}. Revisaremos tu inscripción y te escribiremos a ${registration.contactEmail}.`}
         </Text>
         <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
           <Button href={OPEN_DAY_ROUTES.mine} bolt={observed}>

@@ -2,6 +2,8 @@ import type { Metadata, Route } from "next";
 import { BringDocumentsNotice } from "@/components/open-day/BringDocumentsNotice";
 import { ChatBox } from "@/components/open-day/ChatBox";
 import {
+  EditSchoolPeople,
+  LateDocuments,
   MyRegistrationLogin,
   ObservedDocuments,
   SignOutButton,
@@ -29,7 +31,7 @@ import {
   formatTime,
   formatTimeRange,
 } from "@/lib/open-day/format";
-import { peopleComplete } from "@/lib/open-day/people";
+import { tutorCount } from "@/lib/open-day/people";
 import { getSessionUser } from "@/lib/open-day/server";
 import type {
   OpenDayEvent,
@@ -157,6 +159,10 @@ function RegistrationCard({
     (a) => a.role === "visitor",
   ).length;
   const adults = registration.attendees.length - visitors;
+  // De un colegio solo se listan los tutores: los escolares no se registran
+  const listed = registration.attendees.filter(
+    (a) => registration.kind !== "school" || a.role === "chaperone",
+  );
 
   return (
     <article className="grid gap-6 rounded-lg border-2 border-border bg-surface p-6 shadow-soft">
@@ -183,9 +189,18 @@ function RegistrationCard({
             Personas
           </dt>
           <dd>
-            {visitors} de {registration.expectedVisitors}{" "}
-            {registration.expectedVisitors === 1 ? "visitante" : "visitantes"}
-            {adults > 0 && `, ${adults} ${adults === 1 ? "adulto" : "adultos"}`}
+            {registration.kind === "school" ? (
+              `${registration.expectedVisitors} escolares, ${tutorCount(registration)} ${tutorCount(registration) === 1 ? "tutor" : "tutores"}`
+            ) : (
+              <>
+                {visitors} de {registration.expectedVisitors}{" "}
+                {registration.expectedVisitors === 1
+                  ? "visitante"
+                  : "visitantes"}
+                {adults > 0 &&
+                  `, ${adults} ${adults === 1 ? "adulto" : "adultos"}`}
+              </>
+            )}
           </dd>
         </div>
         {registration.docsDeadline &&
@@ -244,13 +259,14 @@ function RegistrationCard({
         </section>
       )}
 
-      {registration.attendees.length > 0 && (
+      {listed.length > 0 && (
         <details>
           <summary className="cursor-pointer font-bold">
-            Ver personas ({registration.attendees.length})
+            {registration.kind === "school" ? "Ver tutores" : "Ver personas"} (
+            {listed.length})
           </summary>
           <ul className="mt-3 grid gap-1 text-sm">
-            {registration.attendees.map((a) => (
+            {listed.map((a) => (
               <li key={a.participantId}>
                 {a.firstName} {a.lastName} · {ROLE_LABELS[a.role]}
               </li>
@@ -292,30 +308,26 @@ function RegistrationCard({
         </Notice>
       )}
 
+      {["submitted", "docs_observed", "confirmed"].includes(
+        registration.status,
+      ) && <BringDocumentsNotice kind={registration.kind} />}
+
       {registration.kind === "school" &&
-        [
-          "draft",
-          "held",
-          "reserved",
-          "submitted",
-          "docs_observed",
-          "confirmed",
-        ].includes(registration.status) && (
-          <BringDocumentsNotice
-            locked={
-              CONTINUE_STATUSES.has(registration.status) &&
-              !peopleComplete(event, registration)
-            }
-          />
+        (registration.status === "submitted" ||
+          registration.status === "docs_observed") && (
+          <EditSchoolPeople event={event} registration={registration} />
         )}
+
+      {(registration.status === "submitted" ||
+        registration.status === "confirmed") && (
+        <LateDocuments event={event} registration={registration} />
+      )}
 
       {registration.status === "docs_observed" && (
         <ObservedDocuments event={event} registration={registration} />
       )}
 
-      {!["expired", "cancelled"].includes(registration.status) && (
-        <ChatBox registrationId={registration.id} perspective="owner" />
-      )}
+      <ChatBox registrationId={registration.id} perspective="owner" />
 
       <div className="flex flex-wrap gap-3">
         {CONTINUE_STATUSES.has(registration.status) && (

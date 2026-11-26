@@ -154,13 +154,17 @@ const templateKind = z.enum([
   "commitment_letter",
 ]);
 
+const templateAudience = z.enum(["school", "individual"]);
+
 export async function addTemplate(input: {
+  audience: string;
   kind: string;
   driveFile: string;
   activate: boolean;
 }): Promise<ActionResult> {
   const parsed = z
     .object({
+      audience: templateAudience,
       kind: templateKind,
       driveFile: z.string().trim().min(10),
       activate: z.boolean(),
@@ -176,20 +180,23 @@ export async function addTemplate(input: {
   const { data: last } = await guard.supabase
     .from("document_templates")
     .select("version")
+    .eq("audience", parsed.data.audience)
     .eq("kind", parsed.data.kind)
     .order("version", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (parsed.data.activate) {
-    // Solo una versión activa por tipo (índice único parcial)
+    // Solo una versión activa por destinatario y tipo (índice único parcial)
     const { error } = await guard.supabase
       .from("document_templates")
       .update({ active: false })
+      .eq("audience", parsed.data.audience)
       .eq("kind", parsed.data.kind)
       .eq("active", true);
     if (error) return fail(staffError(error));
   }
   const { error } = await guard.supabase.from("document_templates").insert({
+    audience: parsed.data.audience,
     kind: parsed.data.kind,
     version: (last?.version ?? 0) + 1,
     drive_file_id: fileId,
@@ -202,10 +209,11 @@ export async function addTemplate(input: {
 
 export async function activateTemplate(input: {
   id: string;
+  audience: string;
   kind: string;
 }): Promise<ActionResult> {
   const parsed = z
-    .object({ id: z.guid(), kind: templateKind })
+    .object({ id: z.guid(), audience: templateAudience, kind: templateKind })
     .safeParse(input);
   if (!parsed.success) return fail("Plantilla no válida.");
   const guard = await guardStaff("admin");
@@ -213,6 +221,7 @@ export async function activateTemplate(input: {
   const off = await guard.supabase
     .from("document_templates")
     .update({ active: false })
+    .eq("audience", parsed.data.audience)
     .eq("kind", parsed.data.kind)
     .eq("active", true);
   if (off.error) return fail(staffError(off.error));

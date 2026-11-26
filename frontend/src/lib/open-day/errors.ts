@@ -29,10 +29,11 @@ const MESSAGES: Record<string, string> = {
   attendees_invalid: "Revisa la lista de personas.",
   attendee_conflict:
     "Una de las personas ya está inscrita en otra inscripción de este evento.",
-  chaperones: "Faltan acompañantes del colegio.",
+  chaperones: "Registra al menos un tutor.",
   docs_missing: "Faltan documentos por subir.",
   deadline_passed: "Venció el plazo para completar la inscripción.",
   docs_pending: "Aún hay documentos observados sin reemplazar.",
+  docs_not_received: "Faltan los documentos firmados en físico.",
   invalid_option: "Una de las opciones de logística ya no está disponible.",
   invalid_input: "Revisa los datos que escribiste.",
   // drive-upload

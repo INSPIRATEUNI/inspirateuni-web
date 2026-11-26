@@ -48,7 +48,7 @@ export default async function OpenDayOverviewPage({
     {
       label: "Observadas",
       value: count("docs_observed"),
-      hint: "Esperan documentos corregidos",
+      hint: "Esperan correcciones",
       href: inbox("observadas"),
       tone: "text-magenta-deep",
     },

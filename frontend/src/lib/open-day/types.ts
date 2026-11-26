@@ -21,6 +21,7 @@ export type DocType = "dni" | "ce" | "passport" | "other";
 
 export type DocumentKind =
   | "school_consolidated"
+  | "individual_consolidated"
   | "consent"
   | "guardian_declaration"
   | "commitment_letter";
@@ -62,8 +63,14 @@ export type TourSession = {
 
 export type LogisticsOption = { code: string; label: string };
 
+/** Plantillas que se descargan y se firman. */
+export type TemplateKind = Exclude<
+  DocumentKind,
+  "school_consolidated" | "individual_consolidated"
+>;
+
 export type DocumentTemplate = {
-  kind: Exclude<DocumentKind, "school_consolidated">;
+  kind: TemplateKind;
   version: number;
   driveFileId: string;
 };
@@ -105,6 +112,12 @@ export type RegistrationLogistics = {
   notes: string | null;
 };
 
+/** Ficha de un colegio: un solo código por inscripción. */
+export type GroupPass = {
+  accessCode: string;
+  checkedInAt: string | null;
+};
+
 export type AccessPass = {
   id: string;
   accessCode: string;
@@ -130,6 +143,17 @@ export type Registration = {
   contactEmail: string;
   contactPhone: string | null;
   reopenReason: string | null;
+  /** Colegios: datos del representante (su nombre es `contactName`). */
+  representativeRole: string | null;
+  representativeDocType: DocType | null;
+  representativeDocNumber: string | null;
+  /** Si asiste, cuenta como tutor sin figurar en `attendees`. */
+  representativeAttends: boolean;
+  /** Cuándo el staff recibió los documentos firmados en físico. */
+  docsReceivedAt: string | null;
+  /** Cuándo y qué versión de las condiciones aceptó al enviar. */
+  acceptedTermsAt: string | null;
+  termsVersion: string | null;
   awaitingStaff: boolean;
   school: { id: string; name: string; district: string | null } | null;
   enrollments: Enrollment[];
