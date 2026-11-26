@@ -39,7 +39,7 @@ export const CHECKLISTS: Record<DocumentKind, ChecklistItem[]> = {
     {
       id: "apoderado",
       label:
-        "Si hay menores, incluye la declaración del apoderado (o no hay menores)",
+        "Si hay menores, incluye la autorización de participación de cada uno (o no hay menores)",
     },
     matches,
     signed,
@@ -52,6 +52,8 @@ export const CHECKLISTS: Record<DocumentKind, ChecklistItem[]> = {
     signed,
   ],
   commitment_letter: [readable, template, matches, signed],
+  presentation_letter: [readable, template, signed],
+  minor_authorization: [readable, template, matches, signed],
 };
 
 export function checklistFor(kind: DocumentKind | "credentials") {

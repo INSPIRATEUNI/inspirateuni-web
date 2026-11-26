@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ClipboardIcon } from "@/components/site/Icons";
-import { templateLabel } from "@/lib/open-day/conditions";
+import { templateLabel, templatesFor } from "@/lib/open-day/conditions";
 import { driveDownloadUrl } from "@/lib/open-day/constants";
 import { fetchTemplates } from "@/lib/open-day/data";
 import type { DocumentTemplate, RegistrationKind } from "@/lib/open-day/types";
@@ -12,8 +12,15 @@ import { createClient } from "@/lib/supabase/client";
  * Se muestra una vez enviada la inscripción (colegios y personas libres): descargar
  * los documentos y llevarlos impresos, completos y firmados el día del evento.
  */
-export function BringDocumentsNotice({ kind }: { kind: RegistrationKind }) {
-  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+export function BringDocumentsNotice({
+  kind,
+  hasMinors,
+}: {
+  kind: RegistrationKind;
+  hasMinors: boolean;
+}) {
+  const [all, setTemplates] = useState<DocumentTemplate[]>([]);
+  const templates = templatesFor(kind, hasMinors, all);
 
   useEffect(() => {
     fetchTemplates(createClient(), kind).then(setTemplates);

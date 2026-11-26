@@ -13,7 +13,7 @@ import { Notice } from "@/components/open-day/Notice";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
-import { templateLabel } from "@/lib/open-day/conditions";
+import { DOCUMENTS, templateLabel } from "@/lib/open-day/conditions";
 import { driveDownloadUrl, TIER_LABELS, TIERS } from "@/lib/open-day/constants";
 import type {
   RegistrationKind,
@@ -164,11 +164,6 @@ const AUDIENCES: { id: RegistrationKind; label: string; hint: string }[] = [
     hint: "Se descargan y se llevan firmados el día del evento.",
   },
 ];
-const TEMPLATE_KINDS: TemplateKind[] = [
-  "consent",
-  "guardian_declaration",
-  "commitment_letter",
-];
 
 export function TemplatesEditor({
   templates,
@@ -184,7 +179,7 @@ export function TemplatesEditor({
 }) {
   const { pending, error, run } = useAction();
   const [audience, setAudience] = useState<RegistrationKind>("school");
-  const [kind, setKind] = useState<TemplateKind>("consent");
+  const [kind, setKind] = useState<TemplateKind>(DOCUMENTS.school[0].kind);
   const [link, setLink] = useState("");
 
   return (
@@ -201,7 +196,7 @@ export function TemplatesEditor({
             <p className="text-sm text-muted-foreground">{group.hint}</p>
           </div>
           <ul className="grid gap-3">
-            {TEMPLATE_KINDS.map((k) => {
+            {DOCUMENTS[group.id].map(({ kind: k }) => {
               const versions = templates
                 .filter((t) => t.audience === group.id && t.kind === k)
                 .sort((a, b) => b.version - a.version);
@@ -267,7 +262,12 @@ export function TemplatesEditor({
           <select
             className={small}
             value={audience}
-            onChange={(e) => setAudience(e.target.value as RegistrationKind)}
+            onChange={(e) => {
+              const next = e.target.value as RegistrationKind;
+              setAudience(next);
+              // Cada grupo tiene sus propios tipos: se parte del primero
+              setKind(DOCUMENTS[next][0].kind);
+            }}
           >
             {AUDIENCES.map((a) => (
               <option key={a.id} value={a.id}>
@@ -283,7 +283,7 @@ export function TemplatesEditor({
             value={kind}
             onChange={(e) => setKind(e.target.value as TemplateKind)}
           >
-            {TEMPLATE_KINDS.map((k) => (
+            {DOCUMENTS[audience].map(({ kind: k }) => (
               <option key={k} value={k}>
                 {templateLabel(audience, k)}
               </option>

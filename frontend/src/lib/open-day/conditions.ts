@@ -24,7 +24,7 @@ const IMAGE_USE =
 const SCHOOL: Condition[] = [
   {
     template: "commitment_letter",
-    title: "Declaración de responsabilidad del docente",
+    title: "Declaración de responsabilidad del docente acompañante",
     intro:
       "Como representante de la delegación, declaro en mi nombre y en el de los docentes o cuidadores registrados nuestro compromiso de:",
     items: [
@@ -68,7 +68,7 @@ function individual(hasMinors: boolean): Condition[] {
   return [
     {
       template: "commitment_letter",
-      title: "Carta de compromiso",
+      title: "Carta de compromiso y aceptación de condiciones",
       intro:
         "En mi nombre y en el de las personas de esta inscripción, declaramos nuestro compromiso de participar en el Open Day UNI 2026 aceptando las siguientes condiciones:",
       items: [
@@ -132,10 +132,64 @@ export function conditionsFor(
   return kind === "school" ? SCHOOL : individual(hasMinors);
 }
 
+type DownloadableDocument = {
+  kind: TemplateKind;
+  title: string;
+  /** Solo se pide si en la inscripción hay menores de edad. */
+  onlyMinors?: boolean;
+};
+
+/**
+ * Los documentos que cada grupo descarga, firma y lleva el día del evento, en el
+ * orden en que se muestran. Los que además se aceptan en pantalla usan el mismo
+ * título que su declaración.
+ */
+export const DOCUMENTS: Record<RegistrationKind, DownloadableDocument[]> = {
+  school: [
+    {
+      kind: "presentation_letter",
+      title: "Carta de presentación y autorización de delegación escolar",
+    },
+    {
+      kind: "commitment_letter",
+      title: "Declaración de responsabilidad del docente acompañante",
+    },
+    {
+      kind: "guardian_declaration",
+      title: "Declaración jurada de cuidado de instalaciones y bienes",
+    },
+    { kind: "consent", title: "Autorización de uso de imagen" },
+  ],
+  individual: [
+    {
+      kind: "commitment_letter",
+      title: "Carta de compromiso y aceptación de condiciones",
+    },
+    {
+      kind: "guardian_declaration",
+      title: "Declaración jurada de cuidado de instalaciones y bienes",
+    },
+    { kind: "consent", title: "Autorización de uso de imagen" },
+    {
+      kind: "minor_authorization",
+      title: "Autorización de participación del menor",
+      onlyMinors: true,
+    },
+  ],
+};
+
 /** Nombre del documento descargable según a quién va. */
 export function templateLabel(audience: RegistrationKind, kind: TemplateKind) {
-  return (
-    conditionsFor(audience, false).find((c) => c.template === kind)?.title ??
-    "Documento"
-  );
+  return DOCUMENTS[audience].find((d) => d.kind === kind)?.title ?? "Documento";
+}
+
+/** Las plantillas que le tocan a una inscripción, ya ordenadas. */
+export function templatesFor<T extends { kind: TemplateKind }>(
+  audience: RegistrationKind,
+  hasMinors: boolean,
+  templates: T[],
+): T[] {
+  return DOCUMENTS[audience]
+    .filter((d) => hasMinors || !d.onlyMinors)
+    .flatMap((d) => templates.filter((t) => t.kind === d.kind));
 }
