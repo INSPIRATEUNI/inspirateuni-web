@@ -7,7 +7,8 @@ create type public.attendee_role as enum ('visitor', 'chaperone', 'guardian');
 create type public.enrollment_status as enum ('held', 'reserved', 'released');
 create type public.pass_status as enum ('active', 'revoked');
 create type public.document_kind as enum (
-  'school_consolidated', 'consent', 'guardian_declaration', 'commitment_letter', 'credentials'
+  'school_consolidated', 'consent', 'guardian_declaration', 'commitment_letter', 'credentials',
+  'individual_consolidated'
 );
 create type public.email_status as enum ('pending', 'sent', 'failed');
 
@@ -51,6 +52,12 @@ create table public.event_registrations (
   contact_email extensions.citext not null,
   contact_phone text check (contact_phone is null or length(contact_phone) between 6 and 20),
   reopen_reason text,
+  representative_role text check (representative_role is null or length(representative_role) between 2 and 60),
+  representative_doc_type public.doc_type,
+  representative_doc_number text check (representative_doc_number is null or length(representative_doc_number) between 1 and 20),
+  representative_attends boolean not null default false,
+  docs_received_at timestamptz,
+  docs_received_by uuid references public.profiles (id) on delete set null,
   awaiting_staff boolean not null default false,
   last_message_at timestamptz,
   accepted_terms_at timestamptz,
@@ -63,6 +70,7 @@ create index event_registrations_event_id_idx on public.event_registrations (eve
 create index event_registrations_owner_id_idx on public.event_registrations (owner_id);
 create index event_registrations_school_id_idx on public.event_registrations (school_id);
 create index event_registrations_status_idx on public.event_registrations (status);
+create index event_registrations_docs_received_by_idx on public.event_registrations (docs_received_by);
 
 -- Un colegio puede tener varias inscripciones por evento (cada una con tope de visitantes): quien
 -- quiere llevar más escolares de los permitidos crea otra. Los visitantes y acompañantes siguen
@@ -75,6 +83,8 @@ comment on table public.event_registrations is 'Trámite de inscripción al Open
 comment on column public.event_registrations.reference_code is 'Código corto para consultas con el staff (p. ej. OD-7K3F9). No es una credencial.';
 comment on column public.event_registrations.expected_visitors is 'Visitantes declarados; es la cantidad de asientos que se reserva en cada recorrido.';
 comment on column public.event_registrations.hold_renewals is 'El temporizador de elección se renueva una sola vez (0 o 1).';
+comment on column public.event_registrations.representative_attends is 'Colegios: si el representante (contact_name) asiste, cuenta como tutor sin figurar en event_attendees.';
+comment on column public.event_registrations.docs_received_at is 'Cuándo el staff recibió en físico los documentos firmados (obligatorios para colegios y personas libres).';
 
 -- Pases: uno por persona y por evento --------------------------------------------------------
 
@@ -93,6 +103,20 @@ create table public.event_passes (
 create index event_passes_participant_id_idx on public.event_passes (participant_id);
 
 comment on table public.event_passes is 'Un pase con código por persona y evento, aunque el adulto figure en varias inscripciones.';
+
+-- Ficha grupal de un colegio: un solo código por inscripción ---------------------------------
+
+create table public.registration_passes (
+  id uuid primary key default gen_random_uuid(),
+  registration_id uuid not null unique references public.event_registrations (id) on delete cascade,
+  access_code text not null unique default public.random_code(8)
+    check (access_code ~ '^[0-9A-HJKMNP-TV-Z]{8}$'),
+  status public.pass_status not null default 'active',
+  checked_in_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+comment on table public.registration_passes is 'Colegios: un código por inscripción; los escolares no se registran uno por uno (cuenta expected_visitors).';
 
 -- Personas de una inscripción -----------------------------------------------------------------
 
@@ -183,16 +207,19 @@ comment on table public.registration_documents is 'PDFs en Google Drive (drive_f
 
 create table public.document_templates (
   id uuid primary key default gen_random_uuid(),
+  audience public.registration_kind not null default 'individual',
   kind public.document_kind not null check (kind in ('consent', 'guardian_declaration', 'commitment_letter')),
   version integer not null check (version > 0),
   drive_file_id text not null,
   active boolean not null default false,
   created_at timestamptz not null default now(),
-  unique (kind, version)
+  unique (audience, kind, version)
 );
 
--- Una sola versión activa por tipo de plantilla
-create unique index document_templates_active_idx on public.document_templates (kind) where active;
+-- Una sola versión activa por destinatario y tipo de plantilla
+create unique index document_templates_active_idx on public.document_templates (audience, kind) where active;
+
+comment on column public.document_templates.audience is 'A quién va la plantilla: colegios (school) o personas libres (individual).';
 
 -- Bitácora ------------------------------------------------------------------------------------
 
@@ -427,6 +454,7 @@ for each row execute function public.tour_enrollments_seats();
 -- RLS: se habilita aquí sin políticas (nadie accede directo). Las políticas van en 10_rls_openday.sql.
 alter table public.event_registrations enable row level security;
 alter table public.event_passes enable row level security;
+alter table public.registration_passes enable row level security;
 alter table public.event_attendees enable row level security;
 alter table public.tour_enrollments enable row level security;
 alter table public.registration_documents enable row level security;

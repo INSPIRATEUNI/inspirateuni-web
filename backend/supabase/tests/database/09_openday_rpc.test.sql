@@ -202,8 +202,9 @@ SELECT is(
 );
 SELECT throws_ok(
   $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'r1'), 'v1') $$,
-  'P0001', 'Se necesitan al menos 1 acompañantes del colegio (hay 0)', 'La proporción de acompañantes se exige al enviar'
+  'P0001', 'Completa los datos del representante', 'Un colegio exige los datos del representante al enviar'
 );
+UPDATE public.event_registrations SET representative_role = 'Director', representative_doc_type = 'dni', representative_doc_number = '40000000' WHERE id = (SELECT id FROM ids WHERE k = 'r1');
 SELECT throws_ok(
   $$ SELECT public.set_attendees((SELECT id FROM ids WHERE k = 'r1'), $j$[
     {"doc_type":"dni","doc_number":"20000001","first_name":"A","last_name":"A","birth_date":"2009-01-01","attendee_role":"visitor"},
@@ -305,8 +306,8 @@ SELECT lives_ok(
 );
 SELECT is((SELECT status FROM public.event_registrations WHERE id = (SELECT id FROM ids WHERE k = 'r1')), 'confirmed'::public.registration_status, 'Pasa a confirmed');
 SELECT is(
-  (SELECT count(*)::int FROM public.event_attendees WHERE registration_id = (SELECT id FROM ids WHERE k = 'r1') AND pass_id IS NOT NULL),
-  6, 'Se emite un pase por cada persona'
+  (SELECT count(*)::int FROM public.registration_passes WHERE registration_id = (SELECT id FROM ids WHERE k = 'r1') AND status = 'active'),
+  1, 'Un colegio recibe un solo código'
 );
 SELECT ok(
   (SELECT bool_and(verified_at IS NOT NULL) FROM public.registration_documents WHERE registration_id = (SELECT id FROM ids WHERE k = 'r1') AND superseded_at IS NULL),
@@ -338,12 +339,12 @@ SELECT is(
   'true', 'El admin edita la lista de una inscripción confirmada'
 );
 SELECT is(
-  (SELECT status FROM public.event_passes WHERE participant_id = (SELECT id FROM public.participants WHERE doc_number = '30000001')),
-  'revoked'::public.pass_status, 'El pase de quien sale se revoca'
+  (SELECT count(*)::int FROM public.registration_passes WHERE registration_id = (SELECT id FROM ids WHERE k = 'r1') AND status = 'active'),
+  1, 'Al editar la lista el colegio conserva su único código'
 );
 SELECT is(
-  (SELECT status FROM public.event_passes WHERE participant_id = (SELECT id FROM public.participants WHERE doc_number = '30000002')),
-  'active'::public.pass_status, 'Quien entra recibe su pase'
+  (SELECT count(*)::int FROM public.event_passes WHERE participant_id = (SELECT id FROM public.participants WHERE doc_number = '30000002')),
+  0, 'Un colegio no recibe pases por persona'
 );
 SELECT is((SELECT count(*)::int FROM public.email_outbox WHERE template = 'credentials_updated'), 1, 'Se encola el reenvío de códigos');
 

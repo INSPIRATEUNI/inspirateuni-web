@@ -63,6 +63,9 @@ function build(subject: string, title: string, paragraphs: string[], link?: { hr
   return { subject, html, text: strip(html) };
 }
 
+const BRING_DOCUMENTS =
+  "Descarga los documentos desde Mi inscripción, imprímelos, complétalos y llévalos firmados el día del Open Day. Se revisan en la puerta; sin ellos no se permite el ingreso.";
+
 /** Devuelve null si la plantilla no existe (error permanente: no tiene sentido reintentar). */
 export function render(
   template: string,
@@ -82,7 +85,7 @@ export function render(
         `Tu reserva para ${payload.event_name ?? "el Open Day"} está lista`,
         "¡Tu reserva está lista!",
         [
-          `Reservamos tus recorridos para ${event}. Para conservarlos, sube tus documentos y envía la inscripción <strong>antes del ${esc(when(payload.docs_deadline))}</strong>.`,
+          `Reservamos tus recorridos para ${event}. Para conservarlos, completa tus datos y envía la inscripción <strong>antes del ${esc(when(payload.docs_deadline))}</strong>.`,
           "Si no la envías a tiempo, los cupos se liberan automáticamente.",
           code,
         ],
@@ -93,7 +96,7 @@ export function render(
         "Tu reserva vence pronto",
         "Tu reserva vence pronto",
         [
-          `Aún no enviaste tu inscripción a ${event}. Tienes hasta el <strong>${esc(when(payload.docs_deadline))}</strong> para subir los documentos y enviarla.`,
+          `Aún no enviaste tu inscripción a ${event}. Tienes hasta el <strong>${esc(when(payload.docs_deadline))}</strong> para completar tus datos y enviarla.`,
           code,
         ],
         myRegistration,
@@ -116,25 +119,20 @@ export function render(
         [
           payload.kind === "school"
             ? `Gracias por inscribir a tu colegio a ${event}. Nuestro equipo revisará la inscripción y te escribirá cuando esté confirmada.`
-            : `Gracias por inscribirte a ${event}. Nuestro equipo revisará tus documentos y te escribirá cuando esté confirmada.`,
-          payload.kind === "school"
-            ? callout(
-                "Importante",
-                "Recuerda llevar impresos y firmados los documentos del colegio el día del evento. Sin ellos, los escolares no podrán ingresar.",
-              )
-            : "",
+            : `Gracias por inscribirte a ${event}. Nuestro equipo revisará tu inscripción y te escribirá cuando esté confirmada.`,
+          callout("Importante", BRING_DOCUMENTS),
           code,
-        ].filter(Boolean),
+        ],
         myRegistration,
       );
     case "documents_observed":
       return build(
-        "Necesitamos que corrijas tus documentos",
-        "Necesitamos que corrijas tus documentos",
+        "Tenemos observaciones sobre tu inscripción",
+        "Tenemos observaciones sobre tu inscripción",
         [
-          "Revisamos tus documentos y encontramos observaciones:",
+          "Revisamos tu inscripción y tenemos estas observaciones:",
           callout("Observaciones del equipo", payload.observation),
-          `Puedes reemplazarlos y reenviar tu inscripción hasta el <strong>${esc(when(payload.deadline))}</strong>.`,
+          `Puedes responder en Mi inscripción y enviarla de nuevo hasta el <strong>${esc(when(payload.deadline))}</strong>.`,
           code,
         ],
         myRegistration,
@@ -187,7 +185,10 @@ export function render(
         [
           `Te esperamos mañana en ${event}.`,
           payload.gate ? `Ingresa por <strong>${esc(payload.gate)}</strong>${payload.arrival_at ? ` a las <strong>${esc(when(payload.arrival_at))}</strong>` : ""}.` : "",
-          "Lleva tus códigos QR (impresos o en el celular) y tu documento de identidad.",
+          payload.kind === "school"
+            ? "Lleven la ficha del colegio (impresa o en el celular)."
+            : "Lleva tus códigos QR (impresos o en el celular) y tu documento de identidad.",
+          callout("Importante", BRING_DOCUMENTS),
           code,
         ].filter(Boolean),
         { href: codesHref, label: "Ver mis códigos" },
@@ -199,15 +200,12 @@ export function render(
         [
           `Confirmamos tu inscripción a ${event}.`,
           `Ingresa por <strong>${esc(payload.gate)}</strong> a las <strong>${esc(when(payload.arrival_at))}</strong>.`,
-          "Adjuntamos el PDF con los códigos QR de cada persona. Cada una debe presentar el suyo (impreso o en el celular) junto con su documento de identidad.",
           payload.kind === "school"
-            ? callout(
-                "Importante",
-                "Lleven impresos y firmados los documentos del colegio (autorizaciones y carta de compromiso). Sin ellos, los escolares no podrán ingresar.",
-              )
-            : "",
+            ? "Adjuntamos la ficha de tu colegio, con un solo código para todo el grupo. Preséntenla (impresa o en el celular) al ingresar."
+            : "Adjuntamos el PDF con los códigos QR de cada persona. Cada una debe presentar el suyo (impreso o en el celular) junto con su documento de identidad.",
+          callout("Importante", BRING_DOCUMENTS),
           code,
-        ].filter(Boolean),
+        ],
         { href: codesHref, label: "Ver mis códigos" },
       );
     case "credentials_updated":
@@ -215,7 +213,7 @@ export function render(
         "Actualizamos tus códigos de acceso",
         "Actualizamos tus códigos de acceso",
         [
-          "Se modificó la lista de personas de tu inscripción. Adjuntamos el PDF con los códigos actualizados; los anteriores ya no sirven.",
+          "Actualizamos los datos de tu inscripción. Adjuntamos el PDF vigente; usa este en lugar del anterior.",
           code,
         ],
         { href: codesHref, label: "Ver mis códigos" },

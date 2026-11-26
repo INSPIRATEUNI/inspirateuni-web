@@ -2,7 +2,7 @@
 -- Test: integraciones del Open Day (registro de documentos de Drive, datos del PDF de códigos y cola
 -- de correos). Todas las funciones son solo de la service role.
 BEGIN;
-SELECT plan(38);
+SELECT plan(41);
 
 -- Código estable (HINT) del error de negocio que lanza una sentencia
 CREATE FUNCTION pg_temp.hint(sql text) RETURNS text LANGUAGE plpgsql AS $$
@@ -57,6 +57,9 @@ INSERT INTO public.event_attendees (registration_id, participant_id, event_id, a
   ('b0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000001', 'eeeeeeee-0000-0000-0000-eeeeeeeeeeee', 'visitor', '90000000-0000-0000-0000-000000000001'),
   ('b0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000002', 'eeeeeeee-0000-0000-0000-eeeeeeeeeeee', 'visitor', '90000000-0000-0000-0000-000000000002');
 
+INSERT INTO public.registration_passes (registration_id, access_code)
+VALUES ('b0000000-0000-0000-0000-000000000003', 'ABCD2345');
+
 INSERT INTO public.tour_enrollments (registration_id, session_id, seats, status) VALUES
   ('b0000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000001', 2, 'reserved');
 
@@ -105,10 +108,27 @@ SELECT is(
   'deadline_passed', 'Vencido el plazo no se sube');
 SELECT is(
   pg_temp.hint($$SELECT public.record_registration_document('b0000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'school_consolidated', 'x', 'x.pdf', 1)$$),
-  'bad_state', 'Una inscripción enviada no recibe documentos');
+  'sin error', 'Una inscripción enviada todavía recibe el PDF opcional');
 SELECT is(
   pg_temp.hint($$SELECT public.record_registration_document('b0000000-0000-0000-0000-000000000001', NULL, 'credentials', 'x', 'x.pdf', 1)$$),
   'bad_state', 'Los códigos solo se registran con la inscripción confirmada');
+
+-- Persona libre: un solo PDF que reemplaza los sueltos del formato anterior
+RESET ROLE;
+UPDATE public.event_registrations SET docs_deadline = now() + interval '1 day' WHERE id = 'b0000000-0000-0000-0000-000000000002';
+INSERT INTO public.registration_documents (registration_id, kind, drive_file_id, file_name)
+VALUES ('b0000000-0000-0000-0000-000000000002', 'consent', 'drive-viejo', 'consent.pdf');
+SET LOCAL ROLE service_role;
+
+SELECT is(
+  pg_temp.hint($$SELECT public.record_registration_document('b0000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'consent', 'x', 'x.pdf', 1)$$),
+  'invalid_kind', 'Una persona libre ya no sube los PDF sueltos');
+SELECT ok(
+  public.record_registration_document('b0000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'individual_consolidated', 'drive-i1', 'todo.pdf', 1000) IS NOT NULL,
+  'Una persona libre sube su PDF consolidado');
+SELECT is(
+  (SELECT string_agg(kind::text, ',') FROM public.registration_documents WHERE registration_id = 'b0000000-0000-0000-0000-000000000002' AND superseded_at IS NULL),
+  'individual_consolidated', 'El consolidado es el único documento vigente');
 
 SELECT ok(
   public.record_registration_document('b0000000-0000-0000-0000-000000000003', NULL, 'credentials', 'drive-c1', 'codigos.pdf', 5000) IS NOT NULL,
@@ -126,10 +146,10 @@ SELECT is(
   2, 'La bitácora guarda la generación de códigos sin autor');
 
 -- Payload del PDF de códigos --------------------------------------------------------------------------------
-SELECT is(jsonb_array_length(public.credentials_payload('b0000000-0000-0000-0000-000000000003') -> 'people'), 2, 'El payload trae una fila por persona con pase');
+SELECT is(jsonb_array_length(public.credentials_payload('b0000000-0000-0000-0000-000000000003') -> 'people'), 1, 'El payload de un colegio trae una sola fila');
 SELECT is(jsonb_array_length(public.credentials_payload('b0000000-0000-0000-0000-000000000003') -> 'tours'), 1, 'El payload trae los recorridos');
 SELECT is(public.credentials_payload('b0000000-0000-0000-0000-000000000003') -> 'registration' ->> 'school', 'Colegio Tres', 'El payload trae el colegio');
-SELECT is(public.credentials_payload('b0000000-0000-0000-0000-000000000003') -> 'people' -> 0 ->> 'access_code', '0123456J', 'Ordena por apellido y trae el código del pase');
+SELECT is(public.credentials_payload('b0000000-0000-0000-0000-000000000003') -> 'people' -> 0 ->> 'access_code', 'ABCD2345', 'Trae el código del colegio');
 SELECT is(public.credentials_payload(gen_random_uuid()), NULL::jsonb, 'Sin inscripción no hay payload');
 
 -- Cola de correos -------------------------------------------------------------------------------------------

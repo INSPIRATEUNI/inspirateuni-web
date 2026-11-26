@@ -6,7 +6,8 @@
 -- Documentos ----------------------------------------------------------------------------------------------
 
 -- Registra un archivo ya verificado en Drive. Reemplaza (supersede) el anterior del mismo tipo.
--- Un documento del dueño exige inscripción reservada u observada y dentro del plazo; las
+-- Un documento del dueño (opcional) se sube en reserva u observado dentro del plazo y, ya enviada o
+-- confirmada, hasta el día del evento; las
 -- credenciales (PDF de códigos, generado por Apps Script) exigen inscripción confirmada.
 create function public.record_registration_document(
   p_registration_id uuid,
@@ -39,24 +40,33 @@ begin
     if p_actor_id is distinct from v_reg.owner_id then
       perform public._fail('not_found', 'No se encontró la inscripción');
     end if;
-    if v_reg.status not in ('reserved', 'docs_observed') then
+    if v_reg.status not in ('reserved', 'docs_observed', 'submitted', 'confirmed') then
       perform public._fail('bad_state', 'Ya no se pueden subir documentos a esta inscripción');
     end if;
-    if v_reg.docs_deadline is null or v_reg.docs_deadline <= now() then
-      perform public._fail('deadline_passed', 'Venció el plazo para subir documentos');
+    if v_reg.status in ('reserved', 'docs_observed') then
+      if v_reg.docs_deadline is null or v_reg.docs_deadline <= now() then
+        perform public._fail('deadline_passed', 'Venció el plazo para subir documentos');
+      end if;
+    elsif exists (
+      select 1 from public.events e
+      where e.id = v_reg.event_id and e.event_date < (now() at time zone 'America/Lima')::date
+    ) then
+      perform public._fail('deadline_passed', 'El evento ya pasó');
     end if;
     v_allowed := case
       when v_reg.kind = 'school' then array['school_consolidated']::public.document_kind[]
-      else array['consent', 'commitment_letter', 'guardian_declaration']::public.document_kind[]
+      else array['individual_consolidated']::public.document_kind[]
     end;
     if not (p_kind = any (v_allowed)) then
       perform public._fail('invalid_kind', 'Este tipo de documento no corresponde a la inscripción');
     end if;
   end if;
 
+  -- El consolidado de una persona libre reemplaza también los PDF sueltos del formato anterior
   update public.registration_documents
   set superseded_at = now()
-  where registration_id = v_reg.id and kind = p_kind and superseded_at is null;
+  where registration_id = v_reg.id and superseded_at is null
+    and (kind = p_kind or (p_kind = 'individual_consolidated' and kind <> 'credentials'));
 
   insert into public.registration_documents (registration_id, kind, drive_file_id, file_name, size_bytes)
   values (v_reg.id, p_kind, p_drive_file_id, p_file_name, p_size_bytes)
@@ -107,7 +117,31 @@ as $$
       join public.faculties f on f.id = ef.faculty_id
       where te.registration_id = r.id and te.status <> 'released'
     ),
-    'people', (
+    -- Colegios: una sola "persona" (la ficha del colegio) con la misma forma que las demás, así
+    -- Apps Script y su plantilla no cambian
+    'people', case when r.kind = 'school' then (
+      select coalesce(jsonb_agg(
+        jsonb_build_object(
+          'full_name', r.contact_name,
+          'doc_type', r.representative_doc_type,
+          'doc_number', coalesce(r.representative_doc_number, ''),
+          'role', 'Representante del colegio',
+          'relationship', format(
+            '%s %s · %s %s',
+            r.expected_visitors, case when r.expected_visitors = 1 then 'escolar' else 'escolares' end,
+            t.total, case when t.total = 1 then 'tutor' else 'tutores' end
+          ),
+          'access_code', rp.access_code
+        )
+      ), '[]'::jsonb)
+      from public.registration_passes rp
+      cross join lateral (
+        select count(*)::integer + r.representative_attends::integer as total
+        from public.event_attendees ea
+        where ea.registration_id = r.id and ea.attendee_role = 'chaperone'
+      ) t
+      where rp.registration_id = r.id and rp.status = 'active'
+    ) else (
       select coalesce(jsonb_agg(
         jsonb_build_object(
           'full_name', p.first_name || ' ' || p.last_name,
@@ -122,7 +156,7 @@ as $$
       join public.participants p on p.id = ea.participant_id
       join public.event_passes ep on ep.id = ea.pass_id and ep.status = 'active'
       where ea.registration_id = r.id
-    )
+    ) end
   )
   from public.event_registrations r
   join public.events e on e.id = r.event_id
