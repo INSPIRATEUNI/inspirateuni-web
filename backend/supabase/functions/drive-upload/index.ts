@@ -11,12 +11,12 @@ import { corsHeaders, errorResponse, HttpError, json, validOrigin } from "../_sh
 const PDF = "application/pdf";
 const MAX_NAME = 150;
 
-type UploadKind = "school_consolidated" | "consent" | "guardian_declaration" | "commitment_letter";
+type UploadKind = "school_consolidated" | "individual_consolidated";
 
 // Documentos que sube el dueño según el tipo de inscripción (igual que la RPC y submit_registration)
 const KINDS_BY_REGISTRATION: Record<string, UploadKind[]> = {
   school: ["school_consolidated"],
-  individual: ["consent", "commitment_letter", "guardian_declaration"],
+  individual: ["individual_consolidated"],
 };
 
 type Registration = {
@@ -25,7 +25,7 @@ type Registration = {
   status: string;
   docs_deadline: string | null;
   reference_code: string;
-  events: { max_file_mb: number } | null;
+  events: { max_file_mb: number; event_date: string } | null;
 };
 
 function env(name: string): string {
@@ -61,7 +61,7 @@ async function authenticate(req: Request) {
 async function loadOwnRegistration(user: SupabaseClient, registrationId: string, kind: UploadKind) {
   const { data, error } = await user
     .from("event_registrations")
-    .select("id, kind, status, docs_deadline, reference_code, events(max_file_mb)")
+    .select("id, kind, status, docs_deadline, reference_code, events(max_file_mb, event_date)")
     .eq("id", registrationId)
     .maybeSingle<Registration>();
   if (error) throw error;
@@ -70,11 +70,16 @@ async function loadOwnRegistration(user: SupabaseClient, registrationId: string,
   if (!KINDS_BY_REGISTRATION[data.kind].includes(kind)) {
     throw new HttpError(422, "invalid_kind", "Este tipo de documento no corresponde a la inscripción");
   }
-  if (!["reserved", "docs_observed"].includes(data.status)) {
+  if (!["reserved", "docs_observed", "submitted", "confirmed"].includes(data.status)) {
     throw new HttpError(409, "bad_state", "Ya no se pueden subir documentos a esta inscripción");
   }
-  if (!data.docs_deadline || new Date(data.docs_deadline) <= new Date()) {
-    throw new HttpError(409, "deadline_passed", "Venció el plazo para subir documentos");
+  // En reserva u observado manda el plazo; ya enviada, se puede subir hasta el día del evento (Lima)
+  if (["reserved", "docs_observed"].includes(data.status)) {
+    if (!data.docs_deadline || new Date(data.docs_deadline) <= new Date()) {
+      throw new HttpError(409, "deadline_passed", "Venció el plazo para subir documentos");
+    }
+  } else if (data.events && new Date(`${data.events.event_date}T23:59:59-05:00`) < new Date()) {
+    throw new HttpError(409, "deadline_passed", "El evento ya pasó");
   }
   return { ...data, maxBytes: (data.events?.max_file_mb ?? 20) * 1024 * 1024 };
 }

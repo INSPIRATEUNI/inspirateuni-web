@@ -61,6 +61,7 @@ export async function getEvidenceUrl(path: string) {
 /** Documentos que sube quien se inscribe (los `credentials` los genera el sistema). */
 export type RegistrationDocumentKind =
   | "school_consolidated"
+  | "individual_consolidated"
   | "consent"
   | "guardian_declaration"
   | "commitment_letter";

@@ -96,7 +96,7 @@ export default async function ConfigPage({
       supabase.from("faculties").select("id, name").order("name"),
       supabase
         .from("document_templates")
-        .select("id, kind, version, drive_file_id, active"),
+        .select("id, audience, kind, version, drive_file_id, active"),
       supabase
         .from("logistics_options")
         .select("code, label, active")
@@ -160,6 +160,7 @@ export default async function ConfigPage({
         <TemplatesEditor
           templates={(templates.data ?? []).map((t) => ({
             id: t.id,
+            audience: t.audience,
             kind: t.kind,
             version: t.version,
             driveFileId: t.drive_file_id,

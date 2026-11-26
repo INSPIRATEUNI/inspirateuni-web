@@ -1,9 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  DOC_TYPE_LABELS,
-  ROLE_LABELS,
-  TIER_LABELS,
-} from "@/lib/open-day/constants";
+import { DOC_TYPE_LABELS, TIER_LABELS } from "@/lib/open-day/constants";
 import { formatGate, formatTime, formatTimeRange } from "@/lib/open-day/format";
 import {
   fetchConfirmedRegistrations,
@@ -73,16 +69,17 @@ export async function buildExport(
         .sort(([a], [b]) => a.localeCompare(b, "es"))
         .map(([gate, regs]) => {
           const people = regs.reduce((sum, r) => sum + r.people.length, 0);
+          const students = regs.reduce((sum, r) => sum + r.students, 0);
           return {
             title: gate,
-            subtitle: `${plural(people, "persona", "personas")} · ${plural(regs.length, "inscripción", "inscripciones")}`,
+            subtitle: `${plural(people, "persona listada", "personas listadas")} · ${plural(students, "escolar", "escolares")} · ${plural(regs.length, "inscripción", "inscripciones")}`,
             rows: regs.flatMap((r) =>
               r.people.map((p) => [
                 r.arrivalAt ? formatTime(r.arrivalAt) : "",
                 p.lastName,
                 p.firstName,
-                `${DOC_TYPE_LABELS[p.docType]} ${p.docNumber}`,
-                ROLE_LABELS[p.role],
+                `${p.docType ? DOC_TYPE_LABELS[p.docType] : ""} ${p.docNumber}`.trim(),
+                p.roleLabel,
                 p.accessCode ?? "",
                 r.referenceCode,
                 r.schoolName ?? r.contactName,

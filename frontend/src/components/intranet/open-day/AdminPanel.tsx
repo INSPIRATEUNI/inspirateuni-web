@@ -10,6 +10,7 @@ import {
 } from "@/app/intranet/open-day/inscripciones/[id]/actions";
 import { Notice } from "@/components/open-day/Notice";
 import { PeopleEditor } from "@/components/open-day/PeopleEditor";
+import { SchoolPeopleEditor } from "@/components/open-day/SchoolPeopleEditor";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses } from "@/components/ui/Field";
 import { Heading } from "@/components/ui/Heading";
@@ -213,27 +214,51 @@ export function AdminPanel({
       )}
 
       {canEdit && (
-        <Section title="Editar la lista de personas">
+        <Section
+          title={
+            registration.kind === "school"
+              ? "Editar los tutores"
+              : "Editar la lista de personas"
+          }
+        >
           <p className="text-sm text-muted-foreground">
             Si ya estaba confirmada, se emiten o revocan los códigos y se
             reenvían por correo.
           </p>
           <ReasonField value={peopleReason} onChange={setPeopleReason} />
-          <PeopleEditor
-            event={event}
-            registration={registration}
-            onSaved={async () => {
-              setPeopleReason("");
-              router.refresh();
-            }}
-            save={(people) =>
-              setAttendeesAsAdmin({
-                registrationId: registration.id,
-                people,
-                reason: peopleReason,
-              })
-            }
-          />
+          {registration.kind === "school" ? (
+            <SchoolPeopleEditor
+              event={event}
+              registration={registration}
+              onSaved={async () => {
+                setPeopleReason("");
+                router.refresh();
+              }}
+              saveTutors={(people) =>
+                setAttendeesAsAdmin({
+                  registrationId: registration.id,
+                  people,
+                  reason: peopleReason,
+                })
+              }
+            />
+          ) : (
+            <PeopleEditor
+              event={event}
+              registration={registration}
+              onSaved={async () => {
+                setPeopleReason("");
+                router.refresh();
+              }}
+              save={(people) =>
+                setAttendeesAsAdmin({
+                  registrationId: registration.id,
+                  people,
+                  reason: peopleReason,
+                })
+              }
+            />
+          )}
         </Section>
       )}
 

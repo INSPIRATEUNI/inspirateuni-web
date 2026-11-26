@@ -72,9 +72,8 @@ export async function confirmRegistration(
 
 const observeSchema = z.object({
   registrationId: z.guid(),
-  documentIds: z
-    .array(z.guid())
-    .min(1, "Marca al menos un documento a observar."),
+  // Vacío: solo indicaciones, sin pedir que reemplacen ningún archivo
+  documentIds: z.array(z.guid()),
   observation: z
     .string()
     .trim()
@@ -101,6 +100,38 @@ export async function observeDocuments(
   if (error) return fail(staffError(error));
   refresh(registrationId);
   return ok(null);
+}
+
+const registrationOnly = z.object({ registrationId: z.guid() });
+
+async function staffRegistrationRpc(
+  fn: "mark_documents_received" | "verify_documents",
+  input: z.input<typeof registrationOnly>,
+): Promise<ActionResult> {
+  const parsed = registrationOnly.safeParse(input);
+  if (!parsed.success) return fail(firstIssue(parsed.error));
+  const guard = await guardStaff("board");
+  if (!guard.ok) return guard;
+  const { error } = await guard.supabase.rpc(fn, {
+    p_registration_id: parsed.data.registrationId,
+  });
+  if (error) return fail(staffError(error));
+  refresh(parsed.data.registrationId);
+  return ok(null);
+}
+
+/** El staff recibió en físico los documentos firmados. */
+export async function markDocumentsReceived(
+  input: z.input<typeof registrationOnly>,
+): Promise<ActionResult> {
+  return staffRegistrationRpc("mark_documents_received", input);
+}
+
+/** Valida un PDF subido después de aceptar la inscripción. */
+export async function verifyDocuments(
+  input: z.input<typeof registrationOnly>,
+): Promise<ActionResult> {
+  return staffRegistrationRpc("verify_documents", input);
 }
 
 // Overrides de admin -----------------------------------------------------------------------------
@@ -195,7 +226,8 @@ export async function setAttendeesAsAdmin(input: {
   const parsed = z
     .object({
       registrationId: z.guid(),
-      people: z.array(personSchema).min(1),
+      // Un colegio puede quedar solo con el representante como tutor
+      people: z.array(personSchema),
       reason,
     })
     .safeParse(input);

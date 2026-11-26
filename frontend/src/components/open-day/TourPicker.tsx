@@ -383,8 +383,7 @@ export function TourPicker({
             {event.docsCloseAt
               ? ` (como máximo hasta el ${formatDateTime(event.docsCloseAt)})`
               : ""}{" "}
-            para registrar a las personas y subir los documentos; si no, la
-            reserva vence.
+            para completar los datos y enviar; si no, la reserva vence.
           </Notice>
           <div className="flex flex-wrap gap-3">
             <Button bolt onClick={confirm} disabled={busy === "confirm"}>

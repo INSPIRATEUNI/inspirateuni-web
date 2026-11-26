@@ -84,11 +84,13 @@ export default async function InboxPage({
           const reopened = (def as { reopened?: boolean }).reopened;
           const n = (def as { commented?: boolean }).commented
             ? status.commented
-            : reopened === true
-              ? status.reopened
-              : reopened === false
-                ? base - status.reopened
-                : base;
+            : (def as { docsPending?: boolean }).docsPending
+              ? status.docsPending
+              : reopened === true
+                ? status.reopened
+                : reopened === false
+                  ? base - status.reopened
+                  : base;
           const active = key === tab;
           return (
             <Link

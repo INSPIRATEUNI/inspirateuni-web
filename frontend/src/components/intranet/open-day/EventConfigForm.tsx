@@ -30,7 +30,6 @@ const NUMBER_FIELDS: { name: FieldName; label: string; hint?: string }[] = [
     hint: "Plazo para subir documentos tras reservar.",
   },
   { name: "maxFileMb", label: "Tamaño máximo del PDF (MB)" },
-  { name: "studentsPerChaperone", label: "Escolares por acompañante" },
   {
     name: "maxVisitorsPerRegistration",
     label: "Máximo de visitantes por inscripción",

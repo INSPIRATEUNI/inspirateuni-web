@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  experimental: {
+    agentUpgrade: "security",
+  },
   // Rutas antiguas, antes de agrupar los subprogramas bajo PROVOV
   async redirects() {
     return [

@@ -183,6 +183,25 @@ begin
 end;
 $$;
 
+-- Códigos de acceso de una inscripción confirmada: una ficha grupal para colegios y un pase por
+-- persona para las libres
+create function public._issue_credentials(p_registration_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if exists (select 1 from public.event_registrations r where r.id = p_registration_id and r.kind = 'school') then
+    insert into public.registration_passes (registration_id)
+    values (p_registration_id)
+    on conflict (registration_id) do update set status = 'active';
+  else
+    perform public._issue_passes(p_registration_id);
+  end if;
+end;
+$$;
+
 -- Revoca los pases de las personas que ya no figuran en ninguna inscripción viva del evento
 create function public._revoke_orphan_passes(p_event_id uuid, p_participant_ids uuid[])
 returns void
@@ -246,7 +265,10 @@ begin
   from public.event_attendees ea where ea.registration_id = p_registration_id;
 
   begin
-    delete from public.event_attendees where registration_id = p_registration_id;
+    -- Un colegio guarda solo tutores: los escolares del formato anterior se conservan
+    delete from public.event_attendees ea
+    where ea.registration_id = p_registration_id
+      and not (v_reg.kind = 'school' and v_visitors = 0 and ea.attendee_role = 'visitor');
 
     for v_person, v_idx in
       select e.value, e.ord::integer from jsonb_array_elements(p_people) with ordinality as e(value, ord)
@@ -650,10 +672,8 @@ declare
   v_reg public.event_registrations;
   v_body text := btrim(coalesce(p_body, ''));
 begin
+  -- El chat está siempre disponible, también si la inscripción venció o se canceló
   v_reg := public._lock_owned_registration(p_registration_id);
-  if v_reg.status in ('expired', 'cancelled') then
-    perform public._fail('bad_state', 'Esta inscripción ya terminó');
-  end if;
   if v_body = '' or length(v_body) > 1000 then
     perform public._fail('attendees_invalid', 'Escribe un mensaje de hasta 1000 caracteres');
   end if;
@@ -707,8 +727,9 @@ begin
 end;
 $$;
 
--- Cambia la cantidad de visitantes declarados mientras la inscripción está en reserva (después de
--- elegir los recorridos). Ajusta los asientos de cada recorrido: si falta cupo, no cambia nada.
+-- Cambia la cantidad de visitantes declarados después de elegir los recorridos: mientras está en
+-- reserva y, en colegios, también enviada u observada (hasta que se acepta). Ajusta los asientos de
+-- cada recorrido: si falta cupo, no cambia nada.
 create function public.set_expected_visitors(p_registration_id uuid, p_expected_visitors integer)
 returns void
 language plpgsql
@@ -721,10 +742,10 @@ declare
   v_visitors integer;
 begin
   v_reg := public._lock_owned_registration(p_registration_id);
-  if v_reg.status <> 'reserved' then
+  if not (v_reg.status = 'reserved' or (v_reg.kind = 'school' and v_reg.status in ('submitted', 'docs_observed'))) then
     perform public._fail('bad_state', 'La cantidad ya no se puede cambiar');
   end if;
-  if v_reg.docs_deadline < now() then
+  if v_reg.status = 'reserved' and v_reg.docs_deadline < now() then
     perform public._fail('deadline_passed', 'Venció el plazo para completar la inscripción');
   end if;
   if p_expected_visitors is null or p_expected_visitors < 1 then
@@ -743,7 +764,7 @@ begin
   select count(*) into v_visitors
   from public.event_attendees ea
   where ea.registration_id = v_reg.id and ea.attendee_role = 'visitor';
-  if v_visitors > p_expected_visitors then
+  if v_reg.kind = 'individual' and v_visitors > p_expected_visitors then
     perform public._fail(
       'attendees_invalid',
       format('Ya registraste %s visitantes: quita a los que sobran antes de reducir la cantidad', v_visitors)
@@ -767,7 +788,82 @@ begin
 end;
 $$;
 
--- Envía la inscripción: valida personas, proporciones, topes y documentos
+-- Colegios: guarda los datos del representante y la lista de tutores (los escolares no se registran;
+-- solo cuenta expected_visitors). Se puede editar hasta que la inscripción se acepta.
+-- p_representative: {role, doc_type, doc_number, attends}
+-- p_tutors: [{doc_type, doc_number, first_name, last_name, birth_date, phone?, email?, relationship?}]
+create function public.save_school_people(p_registration_id uuid, p_representative jsonb, p_tutors jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_reg public.event_registrations;
+  v_ev public.events;
+  v_role text := btrim(coalesce(p_representative ->> 'role', ''));
+  v_doc_type text := p_representative ->> 'doc_type';
+  v_doc text := btrim(coalesce(p_representative ->> 'doc_number', ''));
+  v_attends boolean := coalesce((p_representative ->> 'attends')::boolean, false);
+  v_tutors jsonb;
+  v_count integer;
+  v_result jsonb;
+begin
+  v_reg := public._lock_owned_registration(p_registration_id);
+  if v_reg.kind <> 'school' then
+    perform public._fail('bad_state', 'Solo las inscripciones de colegio registran tutores');
+  end if;
+  if v_reg.status not in ('reserved', 'submitted', 'docs_observed') then
+    perform public._fail('bad_state', 'Los tutores ya no se pueden cambiar');
+  end if;
+  if v_reg.status = 'reserved' and v_reg.docs_deadline < now() then
+    perform public._fail('deadline_passed', 'Venció el plazo para completar la inscripción');
+  end if;
+
+  if length(v_role) < 2 or v_doc_type is null or v_doc = '' then
+    perform public._fail('attendees_invalid', 'Completa el cargo y el documento del representante');
+  end if;
+  if v_doc_type = 'dni' and v_doc !~ '^[0-9]{8}$' then
+    perform public._fail('attendees_invalid', 'El DNI del representante debe tener 8 dígitos');
+  end if;
+
+  if p_tutors is null or jsonb_typeof(p_tutors) <> 'array' then
+    perform public._fail('attendees_invalid', 'La lista de tutores no es válida');
+  end if;
+  select coalesce(jsonb_agg(e || '{"attendee_role": "chaperone"}'::jsonb order by ord), '[]'::jsonb)
+  into v_tutors
+  from jsonb_array_elements(p_tutors) with ordinality as t(e, ord);
+  v_count := jsonb_array_length(v_tutors) + v_attends::integer;
+
+  if v_attends and exists (
+    select 1 from jsonb_array_elements(v_tutors) e
+    where e ->> 'doc_type' = v_doc_type and btrim(e ->> 'doc_number') = v_doc
+  ) then
+    perform public._fail('attendees_invalid', 'El representante ya cuenta como tutor: quítalo de la lista');
+  end if;
+  if v_count < 1 then
+    perform public._fail('chaperones', 'Registra al menos un tutor (el representante cuenta si asiste)');
+  end if;
+  select * into v_ev from public.events e where e.id = v_reg.event_id;
+  if v_ev.max_adults_per_registration is not null and v_count > v_ev.max_adults_per_registration then
+    perform public._fail('attendees_invalid', 'Superaste el máximo de adultos por inscripción');
+  end if;
+
+  v_result := public._apply_attendees(v_reg.id, v_tutors, true);
+  if (v_result ->> 'ok')::boolean then
+    update public.event_registrations
+    set representative_role = v_role,
+        representative_doc_type = v_doc_type::public.doc_type,
+        representative_doc_number = v_doc,
+        representative_attends = v_attends
+    where id = v_reg.id;
+  end if;
+  return v_result;
+end;
+$$;
+
+-- Envía la inscripción: valida personas y topes. El PDF es opcional; al aceptar los términos
+-- se asume el compromiso de llevar los documentos firmados el día del evento
 create function public.submit_registration(p_registration_id uuid, p_terms_version text)
 returns void
 language plpgsql
@@ -781,9 +877,6 @@ declare
   v_chaperones integer;
   v_adults integer;
   v_minor_visitor boolean;
-  v_kinds public.document_kind[];
-  v_required public.document_kind[];
-  v_missing text[];
 begin
   v_reg := public._lock_owned_registration(p_registration_id);
   if v_reg.status <> 'reserved' then
@@ -807,48 +900,30 @@ begin
   join public.participants p on p.id = ea.participant_id
   where ea.registration_id = v_reg.id;
 
-  if v_visitors <> v_reg.expected_visitors then
+  if v_reg.kind = 'school' then
+    -- Los escolares no se registran: solo cuenta la cantidad declarada
+    if v_reg.representative_role is null or v_reg.representative_doc_number is null then
+      perform public._fail('attendees_invalid', 'Completa los datos del representante');
+    end if;
+    if v_chaperones + v_reg.representative_attends::integer < 1 then
+      perform public._fail('chaperones', 'Registra al menos un tutor (el representante cuenta si asiste)');
+    end if;
+    if v_ev.max_visitors_per_registration is not null and v_reg.expected_visitors > v_ev.max_visitors_per_registration then
+      perform public._fail('attendees_invalid', 'Superaste el máximo de visitantes por inscripción');
+    end if;
+    if v_ev.max_adults_per_registration is not null
+       and v_adults + v_reg.representative_attends::integer > v_ev.max_adults_per_registration then
+      perform public._fail('attendees_invalid', 'Superaste el máximo de adultos por inscripción');
+    end if;
+  elsif v_visitors <> v_reg.expected_visitors then
     perform public._fail(
       'attendees_invalid',
       format('Debes registrar exactamente %s visitantes (hay %s)', v_reg.expected_visitors, v_visitors)
     );
-  end if;
-
-  if v_reg.kind = 'school' then
-    if v_chaperones < ceil(v_visitors::numeric / v_ev.students_per_chaperone) then
-      perform public._fail(
-        'chaperones',
-        format('Se necesitan al menos %s acompañantes del colegio (hay %s)',
-               ceil(v_visitors::numeric / v_ev.students_per_chaperone), v_chaperones)
-      );
-    end if;
-    if v_ev.max_visitors_per_registration is not null and v_visitors > v_ev.max_visitors_per_registration then
-      perform public._fail('attendees_invalid', 'Superaste el máximo de visitantes por inscripción');
-    end if;
-    if v_ev.max_adults_per_registration is not null and v_adults > v_ev.max_adults_per_registration then
-      perform public._fail('attendees_invalid', 'Superaste el máximo de adultos por inscripción');
-    end if;
   elsif v_visitors > v_ev.max_visitors_individual then
     perform public._fail('attendees_invalid', format('Una inscripción individual admite hasta %s visitantes', v_ev.max_visitors_individual));
   elsif v_minor_visitor and v_adults < 1 then
     perform public._fail('attendees_invalid', 'Un visitante menor de edad debe ir con un adulto acompañante');
-  end if;
-
-  select array_agg(distinct d.kind) into v_kinds
-  from public.registration_documents d
-  where d.registration_id = v_reg.id and d.superseded_at is null;
-
-  v_required := case
-    when v_reg.kind = 'school' then array[]::public.document_kind[]
-    when v_minor_visitor then array['consent', 'commitment_letter', 'guardian_declaration']::public.document_kind[]
-    else array['consent', 'commitment_letter']::public.document_kind[]
-  end;
-
-  select array_agg(k::text order by k::text) into v_missing
-  from unnest(v_required) k
-  where v_kinds is null or not (k = any (v_kinds));
-  if v_missing is not null then
-    perform public._fail('docs_missing', 'Faltan documentos: ' || array_to_string(v_missing, ', '));
   end if;
 
   update public.event_registrations
@@ -926,7 +1001,7 @@ begin
   set verified_by = (select auth.uid()), verified_at = now()
   where registration_id = v_reg.id and superseded_at is null and verified_at is null;
 
-  perform public._issue_passes(v_reg.id);
+  perform public._issue_credentials(v_reg.id);
 
   update public.event_registrations
   set status = 'confirmed', confirmed_at = now(), gate = btrim(p_gate), arrival_at = p_arrival_at
@@ -985,6 +1060,11 @@ begin
   set status = 'docs_observed', docs_deadline = p_deadline
   where id = v_reg.id;
 
+  -- La indicación queda también en el chat: se ve aunque no haya ningún PDF (el correo ya sale abajo)
+  insert into public.registration_messages (registration_id, sender, sender_id, body)
+  values (v_reg.id, 'staff', (select auth.uid()), left(btrim(p_observation), 1000));
+  update public.event_registrations set last_message_at = now() where id = v_reg.id;
+
   perform public._log_registration_event(
     v_reg.id, 'docs_observed', v_reg.status, 'docs_observed', btrim(p_observation),
     jsonb_build_object('deadline', p_deadline)
@@ -994,6 +1074,63 @@ begin
     jsonb_build_object('observation', btrim(p_observation), 'deadline', p_deadline),
     'observed:' || v_reg.id || ':' || extract(epoch from now())::bigint
   );
+end;
+$$;
+
+-- El staff recibió en físico los documentos firmados (antes del evento o en la puerta)
+create function public.mark_documents_received(p_registration_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_reg public.event_registrations;
+begin
+  if not public.is_board() then
+    perform public._fail('forbidden', 'Solo la directiva puede recibir documentos');
+  end if;
+  select * into v_reg from public.event_registrations r where r.id = p_registration_id for update;
+  if not found then
+    perform public._fail('not_found', 'No se encontró la inscripción');
+  end if;
+  if v_reg.status not in ('submitted', 'docs_observed', 'confirmed') then
+    perform public._fail('bad_state', 'Solo se reciben documentos de una inscripción enviada');
+  end if;
+  if v_reg.docs_received_at is not null then
+    return;
+  end if;
+  update public.event_registrations
+  set docs_received_at = now(), docs_received_by = (select auth.uid())
+  where id = v_reg.id;
+  perform public._log_registration_event(v_reg.id, 'documents_received', v_reg.status, v_reg.status);
+end;
+$$;
+
+-- Valida un PDF subido después de aceptar la inscripción
+create function public.verify_documents(p_registration_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_reg public.event_registrations;
+begin
+  if not public.is_board() then
+    perform public._fail('forbidden', 'Solo la directiva puede validar documentos');
+  end if;
+  select * into v_reg from public.event_registrations r where r.id = p_registration_id for update;
+  if not found then
+    perform public._fail('not_found', 'No se encontró la inscripción');
+  end if;
+  if v_reg.status <> 'confirmed' then
+    perform public._fail('bad_state', 'Antes de aceptar, los documentos se validan al confirmar');
+  end if;
+  update public.registration_documents
+  set verified_by = (select auth.uid()), verified_at = now(), observation = null
+  where registration_id = v_reg.id and superseded_at is null and verified_at is null and kind <> 'credentials';
+  perform public._log_registration_event(v_reg.id, 'documents_verified', v_reg.status, v_reg.status);
 end;
 $$;
 
@@ -1076,7 +1213,7 @@ begin
   if (v_result ->> 'ok')::boolean then
     perform public._log_registration_event(v_reg.id, 'override_attendees', v_reg.status, v_reg.status, btrim(p_reason), v_result);
     if v_reg.status = 'confirmed' then
-      perform public._issue_passes(v_reg.id);
+      perform public._issue_credentials(v_reg.id);
       perform public._enqueue_email(
         v_reg.id, 'credentials_updated', '{}'::jsonb,
         'credentials:' || v_reg.id || ':' || extract(epoch from now())::bigint
@@ -1146,6 +1283,13 @@ begin
     v_reg.id, 'override_limits', v_reg.status, v_reg.status, btrim(p_reason),
     jsonb_build_object('from', v_reg.expected_visitors, 'to', p_expected_visitors, 'raise_capacity', p_raise_capacity)
   );
+  -- La ficha del colegio muestra la cantidad: se vuelve a generar
+  if v_reg.kind = 'school' and v_reg.status = 'confirmed' then
+    perform public._enqueue_email(
+      v_reg.id, 'credentials_updated', '{}'::jsonb,
+      'credentials:' || v_reg.id || ':' || extract(epoch from now())::bigint
+    );
+  end if;
 end;
 $$;
 
@@ -1179,6 +1323,7 @@ begin
   perform public._release_enrollments(v_reg.id);
   update public.event_registrations set status = 'cancelled' where id = v_reg.id;
   perform public._revoke_orphan_passes(v_reg.event_id, v_participants);
+  update public.registration_passes set status = 'revoked' where registration_id = v_reg.id;
 
   perform public._log_registration_event(v_reg.id, 'override_cancel', v_reg.status, 'cancelled', btrim(p_reason));
   perform public._enqueue_email(
@@ -1384,6 +1529,7 @@ revoke execute on function
   public._release_enrollments(uuid),
   public._expire_holds(uuid, uuid),
   public._issue_passes(uuid),
+  public._issue_credentials(uuid),
   public._revoke_orphan_passes(uuid, uuid[]),
   public._apply_attendees(uuid, jsonb, boolean),
   public.tour_sessions_cancelled(),
@@ -1401,6 +1547,9 @@ revoke execute on function
   public.renew_hold(uuid),
   public.confirm_selection(uuid),
   public.set_attendees(uuid, jsonb),
+  public.save_school_people(uuid, jsonb, jsonb),
+  public.mark_documents_received(uuid),
+  public.verify_documents(uuid),
   public.set_expected_visitors(uuid, integer),
   public.send_registration_message(uuid, text),
   public.staff_send_message(uuid, text),
@@ -1421,6 +1570,9 @@ grant execute on function
   public.renew_hold(uuid),
   public.confirm_selection(uuid),
   public.set_attendees(uuid, jsonb),
+  public.save_school_people(uuid, jsonb, jsonb),
+  public.mark_documents_received(uuid),
+  public.verify_documents(uuid),
   public.set_expected_visitors(uuid, integer),
   public.send_registration_message(uuid, text),
   public.staff_send_message(uuid, text),

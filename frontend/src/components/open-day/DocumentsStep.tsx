@@ -3,14 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircleIcon, ClipboardIcon } from "@/components/site/Icons";
 import { cn } from "@/lib/cn";
+import { templateLabel } from "@/lib/open-day/conditions";
 import {
   DOCUMENT_LABELS,
   driveDownloadUrl,
-  requiredDocuments,
+  uploadKind,
 } from "@/lib/open-day/constants";
 import { fetchTemplates } from "@/lib/open-day/data";
 import { messageFor } from "@/lib/open-day/errors";
-import { formatBytes, formatDateTime, isMinorOn } from "@/lib/open-day/format";
+import { formatBytes, formatDateTime } from "@/lib/open-day/format";
 import type {
   DocumentKind,
   DocumentTemplate,
@@ -22,14 +23,12 @@ import { createClient } from "@/lib/supabase/client";
 import { Notice } from "./Notice";
 
 const DOCUMENT_HINTS: Record<DocumentKind, string> = {
-  school_consolidated:
-    "Junta en un solo PDF las autorizaciones firmadas de todos los escolares y la carta de compromiso del colegio.",
-  consent:
-    "Autorización para el uso de datos personales, firmada. Si inscribes a varias personas, junta todas en un solo PDF.",
-  commitment_letter:
-    "Carta de compromiso de buena conducta, firmada. Si inscribes a varias personas, junta todas en un solo PDF.",
-  guardian_declaration:
-    "Declaración firmada por la madre, padre o apoderado de cada menor de edad el día del evento (en un solo PDF).",
+  school_consolidated: "Junta en un solo PDF todas las cartas firmadas.",
+  individual_consolidated:
+    "Junta en un solo PDF la autorización de uso de datos y la carta de compromiso firmadas de todas las personas. Si algún visitante es menor de edad, incluye la declaración firmada por su apoderado.",
+  consent: "Autorización para el uso de datos personales, firmada.",
+  commitment_letter: "Carta de compromiso de buena conducta, firmada.",
+  guardian_declaration: "Declaración firmada por la madre, padre o apoderado.",
 };
 
 type DocumentsStepProps = {
@@ -40,7 +39,7 @@ type DocumentsStepProps = {
   onlyObserved?: boolean;
 };
 
-/** Plantillas descargables y subida de los PDF obligatorios a Drive. */
+/** Plantillas descargables y subida opcional del PDF consolidado. */
 export function DocumentsStep({
   event,
   registration,
@@ -50,37 +49,20 @@ export function DocumentsStep({
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
 
   useEffect(() => {
-    fetchTemplates(createClient()).then(setTemplates);
-  }, []);
+    fetchTemplates(createClient(), registration.kind).then(setTemplates);
+  }, [registration.kind]);
 
-  const minorVisitor = registration.attendees.some(
-    (a) =>
-      a.role === "visitor" &&
-      a.birthDate &&
-      isMinorOn(a.birthDate, event.eventDate),
+  // Una observación sobre un PDF del formato anterior también se corrige
+  // subiendo el consolidado, que reemplaza a todos
+  const pending = registration.documents.filter(
+    (d) => d.kind !== "credentials" && d.observation && !d.verifiedAt,
   );
-  const required = requiredDocuments(registration.kind, minorVisitor);
-  const kinds = onlyObserved
-    ? required.filter((kind) =>
-        registration.documents.some(
-          (d) => d.kind === kind && d.observation && !d.verifiedAt,
-        ),
-      )
-    : required;
+  const kinds =
+    onlyObserved && pending.length === 0 ? [] : [uploadKind(registration.kind)];
 
   // La observación es una sola por revisión: se muestra una vez, en su propio recuadro
   const observations = [
-    ...new Set(
-      registration.documents
-        .filter(
-          (d) =>
-            d.kind !== "credentials" &&
-            kinds.includes(d.kind) &&
-            d.observation &&
-            !d.verifiedAt,
-        )
-        .map((d) => d.observation as string),
-    ),
+    ...new Set(pending.map((d) => d.observation as string)),
   ];
 
   return (
@@ -121,35 +103,37 @@ export function DocumentsStep({
             </h3>
           </div>
           <p className="font-semibold">
-            Imprímelas, fírmalas
-            {registration.kind === "school"
-              ? " y escanea todo en un solo PDF."
-              : " y escanea cada una en PDF."}{" "}
-            Después súbelas aquí abajo.
+            Imprímelas, fírmalas y llévalas impresas el día del evento. Si
+            quieres adelantar la revisión, escanea todo en un solo PDF y súbelo
+            aquí abajo.
           </p>
           <ul className="flex flex-wrap gap-3">
-            {templates
-              .filter(
-                (t) =>
-                  t.kind !== "guardian_declaration" ||
-                  registration.kind === "school" ||
-                  minorVisitor,
-              )
-              .map((template) => (
-                <li key={template.kind}>
-                  <a
-                    href={driveDownloadUrl(template.driveFileId)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-spark"
-                  >
-                    <ClipboardIcon className="size-5" />
-                    Descargar {DOCUMENT_LABELS[template.kind].toLowerCase()}
-                  </a>
-                </li>
-              ))}
+            {templates.map((template) => (
+              <li key={template.kind}>
+                <a
+                  href={driveDownloadUrl(template.driveFileId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-spark"
+                >
+                  <ClipboardIcon className="size-5" />
+                  Descargar{" "}
+                  {templateLabel(
+                    registration.kind,
+                    template.kind,
+                  ).toLowerCase()}
+                </a>
+              </li>
+            ))}
           </ul>
         </section>
+      )}
+
+      {!onlyObserved && (
+        <Notice tone="info" title="Subir el PDF es opcional">
+          Puedes subirlo ahora o más adelante, hasta el día del evento. Aunque
+          lo subas, debes llevar los documentos impresos y firmados.
+        </Notice>
       )}
 
       <ul className="grid gap-4">
@@ -323,21 +307,5 @@ function DocumentUpload({
       {error && <Notice tone="error">{error}</Notice>}
       {done && !error && <Notice tone="success">Recibimos el archivo.</Notice>}
     </li>
-  );
-}
-
-/** Si ya están todos los documentos obligatorios. */
-export function documentsComplete(
-  event: OpenDayEvent,
-  registration: Registration,
-) {
-  const minorVisitor = registration.attendees.some(
-    (a) =>
-      a.role === "visitor" &&
-      a.birthDate &&
-      isMinorOn(a.birthDate, event.eventDate),
-  );
-  return requiredDocuments(registration.kind, minorVisitor).every((kind) =>
-    registration.documents.some((d) => d.kind === kind),
   );
 }

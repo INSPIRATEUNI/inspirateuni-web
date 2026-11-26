@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { type OpenDayError, toOpenDayError } from "./errors";
-import type { PersonValues } from "./schemas";
+import type { PersonValues, SchoolPeopleValues } from "./schemas";
 import { toRpcPeople } from "./schemas";
 import type { RegistrationKind } from "./types";
 
@@ -116,7 +116,32 @@ export async function setAttendees(
   };
 }
 
-/** Cambia la cantidad de visitantes declarados (inscripción en reserva). */
+/** Colegios: guarda representante y tutores (hasta que se acepta la inscripción). */
+export async function saveSchoolPeople(
+  registrationId: string,
+  values: SchoolPeopleValues,
+): Promise<RpcResult<null>> {
+  const result = await call<SetAttendeesResponse>("save_school_people", {
+    p_registration_id: registrationId,
+    p_representative: {
+      role: values.representative.role.trim(),
+      doc_type: values.representative.docType,
+      doc_number: values.representative.docNumber.trim().toUpperCase(),
+      attends: values.representative.attends,
+    },
+    p_tutors: toRpcPeople(values.people),
+  });
+  if (!result.ok) return result;
+  if (!result.data.ok) {
+    return {
+      ok: false,
+      error: { code: result.data.error, message: result.data.message },
+    };
+  }
+  return { ok: true, data: null };
+}
+
+/** Cambia la cantidad de visitantes declarados (en reserva; colegios, hasta la aceptación). */
 export function setExpectedVisitors(
   registrationId: string,
   expectedVisitors: number,

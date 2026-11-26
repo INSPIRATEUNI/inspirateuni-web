@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DOC_TYPE_LABELS, ROLE_LABELS } from "@/lib/open-day/constants";
 import type {
   AttendeeRole,
   DocType,
@@ -57,6 +58,11 @@ export const INBOX_TABS = {
   },
   observadas: { label: "Observadas", statuses: ["docs_observed"] },
   confirmadas: { label: "Confirmadas", statuses: ["confirmed"] },
+  "por-recibir": {
+    label: "Documentos por recibir",
+    statuses: ["confirmed"],
+    docsPending: true,
+  },
   "en-curso": {
     label: "En curso",
     statuses: ["draft", "held", "reserved"],
@@ -74,6 +80,8 @@ export const INBOX_TABS = {
     statuses: RegistrationStatus[];
     /** true: solo reabiertas por un admin; false: sin las reabiertas. */
     reopened?: boolean;
+    /** true: solo las que aún no entregaron los documentos en físico. */
+    docsPending?: boolean;
     /** true: solo las que esperan respuesta del staff en el chat. */
     commented?: boolean;
   }
@@ -161,6 +169,8 @@ export async function fetchInbox(
   if (reopened === false) request = request.is("reopen_reason", null);
   if ((INBOX_TABS[tab] as { commented?: boolean }).commented)
     request = request.eq("awaiting_staff", true);
+  if ((INBOX_TABS[tab] as { docsPending?: boolean }).docsPending)
+    request = request.is("docs_received_at", null);
   if (kind) request = request.eq("kind", kind);
 
   if (term) {
@@ -227,10 +237,13 @@ export async function fetchStatusCounts(
     expected_visitors: number;
     reopen_reason: string | null;
     awaiting_staff: boolean;
+    docs_received_at: string | null;
   }>((from, to) =>
     supabase
       .from("event_registrations")
-      .select("status, expected_visitors, reopen_reason, awaiting_staff")
+      .select(
+        "status, expected_visitors, reopen_reason, awaiting_staff, docs_received_at",
+      )
       .eq("event_id", eventId)
       .range(from, to),
   );
@@ -238,7 +251,9 @@ export async function fetchStatusCounts(
   const visitors = {} as Record<RegistrationStatus, number>;
   let reopened = 0;
   let commented = 0;
+  let docsPending = 0;
   for (const row of rows) {
+    if (row.status === "confirmed" && !row.docs_received_at) docsPending += 1;
     if (
       row.awaiting_staff &&
       row.status !== "cancelled" &&
@@ -249,7 +264,14 @@ export async function fetchStatusCounts(
     counts[row.status] = (counts[row.status] ?? 0) + 1;
     visitors[row.status] = (visitors[row.status] ?? 0) + row.expected_visitors;
   }
-  return { counts, visitors, reopened, commented, total: rows.length };
+  return {
+    counts,
+    visitors,
+    reopened,
+    commented,
+    docsPending,
+    total: rows.length,
+  };
 }
 
 // Detalle ----------------------------------------------------------------------------------------
@@ -301,8 +323,8 @@ export async function fetchRegistrationExtras(
   eventId: string,
   participantIds: string[],
 ) {
-  const [documents, enrollments, passes, events, logistics] = await Promise.all(
-    [
+  const [documents, enrollments, passes, events, logistics, groupPass] =
+    await Promise.all([
       supabase
         .from("registration_documents")
         .select(
@@ -333,8 +355,16 @@ export async function fetchRegistrationExtras(
         .order("created_at", { ascending: false })
         .limit(200),
       supabase.from("logistics_options").select("code, label"),
-    ],
-  );
+      supabase
+        .from("registration_passes")
+        .select("access_code, status, checked_in_at")
+        .eq("registration_id", registrationId)
+        .maybeSingle<{
+          access_code: string;
+          status: StaffPass["status"];
+          checked_in_at: string | null;
+        }>(),
+    ]);
 
   const eventRows = (events.data ?? []) as {
     id: string;
@@ -436,6 +466,13 @@ export async function fetchRegistrationExtras(
         checkedInAt: p.checked_in_at,
       }),
     ),
+    groupPass: groupPass.data
+      ? {
+          accessCode: groupPass.data.access_code,
+          status: groupPass.data.status,
+          checkedInAt: groupPass.data.checked_in_at,
+        }
+      : null,
     timeline: eventRows.map(
       (e): TimelineEntry => ({
         id: e.id,
@@ -567,9 +604,9 @@ export async function fetchEventFaculties(
 export type ExportPerson = {
   firstName: string;
   lastName: string;
-  docType: DocType;
+  docType: DocType | null;
   docNumber: string;
-  role: AttendeeRole;
+  roleLabel: string;
   accessCode: string | null;
   checkedInAt: string | null;
 };
@@ -583,14 +620,24 @@ export type ExportRegistration = {
   contactName: string;
   contactEmail: string;
   schoolName: string | null;
+  /** Escolares declarados de un colegio (no figuran en `people`). */
+  students: number;
   people: ExportPerson[];
 };
 
-/** Inscripciones confirmadas con sus personas y códigos (lista por puerta). */
+/**
+ * Inscripciones confirmadas con sus personas y códigos (lista por puerta). De un
+ * colegio salen el representante y los tutores, todos con el código del colegio.
+ */
 export async function fetchConfirmedRegistrations(
   supabase: SupabaseClient,
   eventId: string,
 ) {
+  type PassRow = {
+    access_code: string;
+    status: string;
+    checked_in_at: string | null;
+  };
   const rows = await fetchAllRows<{
     id: string;
     reference_code: string;
@@ -599,7 +646,12 @@ export async function fetchConfirmedRegistrations(
     arrival_at: string | null;
     contact_name: string;
     contact_email: string;
+    expected_visitors: number;
+    representative_doc_type: DocType | null;
+    representative_doc_number: string | null;
+    representative_attends: boolean;
     school: { name: string } | null;
+    group_pass: PassRow | PassRow[] | null;
     attendees: {
       attendee_role: AttendeeRole;
       participant: {
@@ -608,25 +660,59 @@ export async function fetchConfirmedRegistrations(
         first_name: string;
         last_name: string;
       } | null;
-      pass: {
-        access_code: string;
-        status: string;
-        checked_in_at: string | null;
-      } | null;
+      pass: PassRow | null;
     }[];
   }>((from, to) =>
     supabase
       .from("event_registrations")
       .select(
-        "id, reference_code, kind, gate, arrival_at, contact_name, contact_email, school:schools(name), attendees:event_attendees(attendee_role, participant:participants(doc_type, doc_number, first_name, last_name), pass:event_passes(access_code, status, checked_in_at))",
+        "id, reference_code, kind, gate, arrival_at, contact_name, contact_email, expected_visitors, representative_doc_type, representative_doc_number, representative_attends, school:schools(name), group_pass:registration_passes(access_code, status, checked_in_at), attendees:event_attendees(attendee_role, participant:participants(doc_type, doc_number, first_name, last_name), pass:event_passes(access_code, status, checked_in_at))",
       )
       .eq("event_id", eventId)
       .eq("status", "confirmed")
       .order("arrival_at", { ascending: true })
       .range(from, to),
   );
-  return rows.map(
-    (row): ExportRegistration => ({
+  return rows.map((row): ExportRegistration => {
+    const isSchool = row.kind === "school";
+    const group = Array.isArray(row.group_pass)
+      ? row.group_pass[0]
+      : row.group_pass;
+    const codeOf = (pass: PassRow | null | undefined) =>
+      pass?.status === "active" ? pass.access_code : null;
+    const people = row.attendees
+      .filter((a) => a.participant)
+      // Los escolares registrados con el formato anterior ya no se listan
+      .filter((a) => !isSchool || a.attendee_role === "chaperone")
+      .map((a): ExportPerson => {
+        const pass = isSchool ? group : a.pass;
+        return {
+          firstName: a.participant?.first_name ?? "",
+          lastName: a.participant?.last_name ?? "",
+          docType: a.participant?.doc_type ?? "dni",
+          docNumber: a.participant?.doc_number ?? "",
+          roleLabel: isSchool ? "Tutor" : ROLE_LABELS[a.attendee_role],
+          accessCode: codeOf(pass),
+          checkedInAt: pass?.checked_in_at ?? null,
+        };
+      })
+      .sort(
+        (a, b) =>
+          a.lastName.localeCompare(b.lastName, "es") ||
+          a.firstName.localeCompare(b.firstName, "es"),
+      );
+    if (isSchool) {
+      people.unshift({
+        firstName: row.contact_name,
+        lastName: "",
+        docType: row.representative_doc_type,
+        docNumber: row.representative_doc_number ?? "",
+        roleLabel: `Representante${row.representative_attends ? "" : " (no asiste)"} · ${row.expected_visitors} escolares`,
+        accessCode: codeOf(group),
+        checkedInAt: group?.checked_in_at ?? null,
+      });
+    }
+    return {
       id: row.id,
       referenceCode: row.reference_code,
       kind: row.kind,
@@ -635,24 +721,10 @@ export async function fetchConfirmedRegistrations(
       contactName: row.contact_name,
       contactEmail: row.contact_email,
       schoolName: row.school?.name ?? null,
-      people: row.attendees
-        .filter((a) => a.participant)
-        .map((a) => ({
-          firstName: a.participant?.first_name ?? "",
-          lastName: a.participant?.last_name ?? "",
-          docType: a.participant?.doc_type ?? "dni",
-          docNumber: a.participant?.doc_number ?? "",
-          role: a.attendee_role,
-          accessCode: a.pass?.status === "active" ? a.pass.access_code : null,
-          checkedInAt: a.pass?.checked_in_at ?? null,
-        }))
-        .sort(
-          (a, b) =>
-            a.lastName.localeCompare(b.lastName, "es") ||
-            a.firstName.localeCompare(b.firstName, "es"),
-        ),
-    }),
-  );
+      students: isSchool ? row.expected_visitors : 0,
+      people,
+    };
+  });
 }
 
 export type SessionGroup = {
@@ -685,13 +757,15 @@ export async function fetchSessionRoster(
         contact_email: string;
         contact_phone: string | null;
         school: { name: string } | null;
+        expected_visitors: number;
+        representative_attends: boolean;
         attendees: { attendee_role: AttendeeRole }[];
       } | null;
     }>((from, to) =>
       supabase
         .from("tour_enrollments")
         .select(
-          "session_id, seats, registration:event_registrations!inner(event_id, reference_code, kind, status, contact_name, contact_email, contact_phone, school:schools(name), attendees:event_attendees(attendee_role))",
+          "session_id, seats, registration:event_registrations!inner(event_id, reference_code, kind, status, contact_name, contact_email, contact_phone, expected_visitors, representative_attends, school:schools(name), attendees:event_attendees(attendee_role))",
         )
         .eq("registration.event_id", eventId)
         .eq("registration.status", "confirmed")
@@ -703,9 +777,17 @@ export async function fetchSessionRoster(
   const bySession = new Map<string, SessionGroup[]>();
   for (const e of enrollments) {
     if (!e.registration) continue;
-    const visitors = e.registration.attendees.filter(
+    const isSchool = e.registration.kind === "school";
+    const listedVisitors = e.registration.attendees.filter(
       (a) => a.attendee_role === "visitor",
     ).length;
+    const visitors = isSchool
+      ? e.registration.expected_visitors
+      : listedVisitors;
+    const adults =
+      e.registration.attendees.length -
+      listedVisitors +
+      (isSchool && e.registration.representative_attends ? 1 : 0);
     const group: SessionGroup = {
       referenceCode: e.registration.reference_code,
       kind: e.registration.kind,
@@ -714,7 +796,7 @@ export async function fetchSessionRoster(
       contactEmail: e.registration.contact_email,
       contactPhone: e.registration.contact_phone,
       visitors,
-      adults: e.registration.attendees.length - visitors,
+      adults,
       seats: e.seats,
     };
     bySession.set(e.session_id, [
@@ -815,20 +897,101 @@ export type CheckInCandidate = {
   accessCode: string;
   passStatus: "active" | "revoked";
   checkedInAt: string | null;
-  firstName: string;
-  lastName: string;
-  docType: DocType;
-  docNumber: string;
-  role: AttendeeRole | null;
-  registrationId: string | null;
+  title: string;
+  subtitle: string;
   referenceCode: string | null;
   registrationStatus: RegistrationStatus | null;
-  schoolName: string | null;
-  gate: string | null;
-  arrivalAt: string | null;
 };
 
 const ACCESS_CODE = /^[0-9A-Z]{8}$/;
+
+type GroupRow = {
+  access_code: string;
+  status: "active" | "revoked";
+  checked_in_at: string | null;
+  registration: {
+    id: string;
+    reference_code: string;
+    status: RegistrationStatus;
+    contact_name: string;
+    expected_visitors: number;
+    school: { name: string } | null;
+  };
+};
+
+const GROUP_SELECT =
+  "access_code, status, checked_in_at, registration:event_registrations!inner(id, event_id, reference_code, status, contact_name, expected_visitors, school:schools(name))";
+
+function groupCandidate(row: GroupRow): CheckInCandidate {
+  const reg = row.registration;
+  return {
+    accessCode: row.access_code,
+    passStatus: row.status,
+    checkedInAt: row.checked_in_at,
+    title: reg.school?.name ?? reg.contact_name,
+    subtitle: `Colegio · Representante: ${reg.contact_name} · ${reg.expected_visitors} escolares`,
+    referenceCode: reg.reference_code,
+    registrationStatus: reg.status,
+  };
+}
+
+/** Fichas de colegio por código, colegio, representante, inscripción o tutor. */
+async function searchGroupPasses(
+  supabase: SupabaseClient,
+  eventId: string,
+  term: string,
+  upper: string,
+  matchedIds: string[],
+): Promise<CheckInCandidate[]> {
+  const tolerant = accentTolerantLike(term);
+  const [{ data: schools }, { data: tutorOf }] = await Promise.all([
+    supabase.from("schools").select("id").ilike("name", tolerant).limit(20),
+    matchedIds.length > 0
+      ? supabase
+          .from("event_attendees")
+          .select("registration_id")
+          .eq("event_id", eventId)
+          .eq("attendee_role", "chaperone")
+          .in("participant_id", matchedIds)
+      : Promise.resolve({ data: [] as { registration_id: string }[] }),
+  ]);
+
+  const filters = [
+    `reference_code.ilike.%${term}%`,
+    `contact_name.ilike.${tolerant}`,
+    `representative_doc_number.ilike.${upper}%`,
+  ];
+  if (schools && schools.length > 0)
+    filters.push(`school_id.in.(${schools.map((s) => s.id).join(",")})`);
+  if (tutorOf && tutorOf.length > 0)
+    filters.push(`id.in.(${tutorOf.map((t) => t.registration_id).join(",")})`);
+
+  const [byCode, byData] = await Promise.all([
+    ACCESS_CODE.test(upper)
+      ? supabase
+          .from("registration_passes")
+          .select(GROUP_SELECT)
+          .eq("registration.event_id", eventId)
+          .eq("access_code", upper)
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("registration_passes")
+      .select(GROUP_SELECT)
+      .eq("registration.event_id", eventId)
+      .or(filters.join(","), { referencedTable: "registration" })
+      .limit(20),
+  ]);
+  if (byCode.error) throw new Error(byCode.error.message);
+  if (byData.error) throw new Error(byData.error.message);
+
+  const rows = [
+    ...((byCode.data ?? []) as unknown as GroupRow[]),
+    ...((byData.data ?? []) as unknown as GroupRow[]),
+  ];
+  return [...new Map(rows.map((r) => [r.access_code, r])).values()].map(
+    groupCandidate,
+  );
+}
 
 /** Busca pases del evento por código, documento o nombre. */
 export async function searchPasses(
@@ -870,7 +1033,14 @@ export async function searchPasses(
   if (ACCESS_CODE.test(upper)) conditions.push(`access_code.eq.${upper}`);
   if (matchedIds.length > 0)
     conditions.push(`participant_id.in.(${matchedIds.join(",")})`);
-  if (conditions.length === 0) return [];
+  const groups = await searchGroupPasses(
+    supabase,
+    eventId,
+    term,
+    upper,
+    matchedIds,
+  );
+  if (conditions.length === 0) return groups;
 
   const { data: passes, error } = await supabase
     .from("event_passes")
@@ -895,7 +1065,7 @@ export async function searchPasses(
       last_name: string;
     } | null;
   }[];
-  if (passRows.length === 0) return [];
+  if (passRows.length === 0) return groups;
 
   const { data: attendees } = await supabase
     .from("event_attendees")
@@ -942,45 +1112,59 @@ export async function searchPasses(
     }
   }
 
-  return passRows.map((p): CheckInCandidate => {
+  const passCandidates = passRows.map((p): CheckInCandidate => {
     const attendee = byPass.get(p.id);
     const registration = attendee?.registration ?? null;
     return {
       accessCode: p.access_code,
       passStatus: p.status,
       checkedInAt: p.checked_in_at,
-      firstName: p.participant?.first_name ?? "",
-      lastName: p.participant?.last_name ?? "",
-      docType: p.participant?.doc_type ?? "dni",
-      docNumber: p.participant?.doc_number ?? "",
-      role: attendee?.attendee_role ?? null,
-      registrationId: registration?.id ?? null,
+      title: `${p.participant?.first_name ?? ""} ${p.participant?.last_name ?? ""}`,
+      subtitle: [
+        `${DOC_TYPE_LABELS[p.participant?.doc_type ?? "dni"]} ${p.participant?.doc_number ?? ""}`,
+        attendee && ROLE_LABELS[attendee.attendee_role],
+        registration?.school?.name,
+      ]
+        .filter(Boolean)
+        .join(" · "),
       referenceCode: registration?.reference_code ?? null,
       registrationStatus: registration?.status ?? null,
-      schoolName: registration?.school?.name ?? null,
-      gate: registration?.gate ?? null,
-      arrivalAt: registration?.arrival_at ?? null,
     };
   });
+  return [...groups, ...passCandidates];
 }
 
-/** Ingresos registrados del evento. */
+/** Ingresos registrados del evento: códigos de personas libres y de colegios. */
 export async function fetchCheckInCount(
   supabase: SupabaseClient,
   eventId: string,
 ) {
-  const [{ count: checkedIn }, { count: active }] = await Promise.all([
+  const people = () =>
     supabase
       .from("event_passes")
       .select("id", { count: "exact", head: true })
       .eq("event_id", eventId)
-      .eq("status", "active")
-      .not("checked_in_at", "is", null),
+      .eq("status", "active");
+  const schools = () =>
     supabase
-      .from("event_passes")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", eventId)
-      .eq("status", "active"),
+      .from("registration_passes")
+      .select("id, registration:event_registrations!inner(event_id)", {
+        count: "exact",
+        head: true,
+      })
+      .eq("registration.event_id", eventId)
+      .eq("status", "active");
+  const results = await Promise.all([
+    people().not("checked_in_at", "is", null),
+    schools().not("checked_in_at", "is", null),
+    people(),
+    schools(),
   ]);
-  return { checkedIn: checkedIn ?? 0, active: active ?? 0 };
+  const [inPeople, inSchools, allPeople, allSchools] = results.map(
+    (r) => r.count ?? 0,
+  );
+  return {
+    checkedIn: inPeople + inSchools,
+    active: allPeople + allSchools,
+  };
 }

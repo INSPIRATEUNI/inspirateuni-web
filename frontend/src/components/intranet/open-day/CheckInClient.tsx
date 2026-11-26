@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
-  type CheckInResult,
   checkIn,
+  type PassInfo,
+  previewPass,
   searchCheckIn,
 } from "@/app/intranet/open-day/check-in/actions";
+import { markDocumentsReceived } from "@/app/intranet/open-day/inscripciones/[id]/actions";
 import { Notice } from "@/components/open-day/Notice";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses } from "@/components/ui/Field";
@@ -20,15 +22,19 @@ import {
 import { formatGate, formatTime } from "@/lib/open-day/format";
 import type { CheckInCandidate } from "@/lib/open-day/staff/queries";
 
+type Scanned = { code: string; info: PassInfo; justRegistered: boolean };
+
 /**
- * Check-in en puerta: busca por código (lo que tiene el QR), documento o nombre
- * y marca el ingreso. El campo queda enfocado para la siguiente persona.
+ * Check-in en puerta: se busca por código (lo que tiene el QR o las barras),
+ * documento o nombre. Escanear solo muestra los datos; el ingreso se registra con
+ * un botón y, sin los documentos firmados en físico, exige un motivo.
  */
 export function CheckInClient({ eventId }: { eventId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CheckInCandidate[] | null>(null);
-  const [last, setLast] = useState<CheckInResult | null>(null);
+  const [scanned, setScanned] = useState<Scanned | null>(null);
+  const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -36,10 +42,20 @@ export function CheckInClient({ eventId }: { eventId: string }) {
     inputRef.current?.focus();
   }, []);
 
+  async function show(code: string) {
+    const result = await previewPass({ accessCode: code });
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setReason("");
+    setScanned({ code, info: result.data, justRegistered: false });
+  }
+
   function search(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
-    setLast(null);
+    setScanned(null);
     startTransition(async () => {
       const result = await searchCheckIn({ eventId, query });
       if (!result.ok) {
@@ -48,36 +64,49 @@ export function CheckInClient({ eventId }: { eventId: string }) {
         return;
       }
       setResults(result.data);
-      // Un código exacto y válido se marca de inmediato (flujo rápido con lector de QR)
-      const exact = result.data.filter(
-        (c) =>
-          c.accessCode === query.trim().toUpperCase() &&
-          c.passStatus === "active",
-      );
-      if (exact.length === 1 && result.data.length === 1)
-        mark(exact[0].accessCode);
+      // Un código exacto abre su ficha de inmediato (flujo rápido con lector)
+      const typed = query.trim().toUpperCase();
+      if (result.data.length === 1 && result.data[0].accessCode === typed) {
+        setResults(null);
+        setQuery("");
+        await show(typed);
+      }
     });
   }
 
-  function mark(accessCode: string) {
+  function open(code: string) {
+    setError(null);
+    startTransition(() => show(code));
+  }
+
+  function register(code: string, overrideReason?: string) {
     setError(null);
     startTransition(async () => {
-      const result = await checkIn({ accessCode });
+      const result = await checkIn({ accessCode: code, overrideReason });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setLast(result.data);
+      setScanned({
+        code,
+        info: result.data,
+        justRegistered: result.data.ok && !result.data.already,
+      });
+      setResults(null);
       setQuery("");
-      setResults(
-        (current) =>
-          current?.map((c) =>
-            c.accessCode === accessCode && result.data.ok
-              ? { ...c, checkedInAt: result.data.checkedInAt }
-              : c,
-          ) ?? null,
-      );
       inputRef.current?.focus();
+    });
+  }
+
+  function receiveDocuments(code: string, registrationId: string) {
+    setError(null);
+    startTransition(async () => {
+      const result = await markDocumentsReceived({ registrationId });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      await show(code);
     });
   }
 
@@ -85,7 +114,7 @@ export function CheckInClient({ eventId }: { eventId: string }) {
     <div className="grid gap-6">
       <form onSubmit={search} className="flex flex-wrap items-end gap-3">
         <label className="grid flex-1 gap-1 font-semibold sm:min-w-80">
-          Código, documento o nombre
+          Código, documento, nombre o colegio
           <input
             ref={inputRef}
             value={query}
@@ -107,7 +136,20 @@ export function CheckInClient({ eventId }: { eventId: string }) {
 
       <div aria-live="polite" className="grid gap-4">
         {error && <Notice tone="error">{error}</Notice>}
-        {last && <CheckInOutcome result={last} />}
+        {scanned && (
+          <PassCard
+            scanned={scanned}
+            pending={pending}
+            reason={reason}
+            onReason={setReason}
+            onRegister={(overrideReason) =>
+              register(scanned.code, overrideReason)
+            }
+            onReceive={(registrationId) =>
+              receiveDocuments(scanned.code, registrationId)
+            }
+          />
+        )}
       </div>
 
       {results && results.length === 0 && (
@@ -118,100 +160,198 @@ export function CheckInClient({ eventId }: { eventId: string }) {
 
       {results && results.length > 0 && (
         <ul className="grid gap-3">
-          {results.map((c) => {
-            const confirmed = c.registrationStatus === "confirmed";
-            const usable = c.passStatus === "active" && confirmed;
-            return (
-              <li
-                key={c.accessCode}
-                className="flex flex-wrap items-center justify-between gap-4 rounded-lg border-2 border-border bg-surface p-4"
-              >
-                <div className="grid gap-1">
-                  <p className="text-lg font-bold">
-                    {c.firstName} {c.lastName}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {DOC_TYPE_LABELS[c.docType]} {c.docNumber}
-                    {c.role && ` · ${ROLE_LABELS[c.role]}`}
-                    {c.schoolName && ` · ${c.schoolName}`}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-mono font-bold">{c.accessCode}</span>
-                    {c.referenceCode && ` · ${c.referenceCode}`}
-                    {c.gate && ` · ${formatGate(c.gate)}`}
-                    {c.arrivalAt && ` · llegada ${formatTime(c.arrivalAt)}`}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {c.registrationStatus && (
-                      <Tag tone={STATUS_TONES[c.registrationStatus]}>
-                        {STATUS_LABELS[c.registrationStatus]}
-                      </Tag>
-                    )}
-                    {c.passStatus === "revoked" && (
-                      <Tag tone="magenta">Código revocado</Tag>
-                    )}
-                  </div>
+          {results.map((c) => (
+            <li
+              key={c.accessCode}
+              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border-2 border-border bg-surface p-4"
+            >
+              <div className="grid gap-1">
+                <p className="text-lg font-bold">{c.title}</p>
+                <p className="text-sm text-muted-foreground">{c.subtitle}</p>
+                <p className="text-sm">
+                  <span className="font-mono font-bold">{c.accessCode}</span>
+                  {c.referenceCode && ` · ${c.referenceCode}`}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {c.registrationStatus && (
+                    <Tag tone={STATUS_TONES[c.registrationStatus]}>
+                      {STATUS_LABELS[c.registrationStatus]}
+                    </Tag>
+                  )}
+                  {c.passStatus === "revoked" && (
+                    <Tag tone="magenta">Código revocado</Tag>
+                  )}
+                  {c.checkedInAt && (
+                    <Tag tone="green">
+                      Ingresó a las {formatTime(c.checkedInAt)}
+                    </Tag>
+                  )}
                 </div>
-                {c.checkedInAt ? (
-                  <p className="font-bold text-green-ink">
-                    Ingresó a las {formatTime(c.checkedInAt)}
-                  </p>
-                ) : (
-                  <Button
-                    disabled={!usable || pending}
-                    onClick={() => mark(c.accessCode)}
-                    aria-busy={pending}
-                  >
-                    {usable ? "Marcar ingreso" : "No puede ingresar"}
-                  </Button>
-                )}
-              </li>
-            );
-          })}
+              </div>
+              <Button
+                disabled={c.passStatus !== "active" || pending}
+                onClick={() => open(c.accessCode)}
+              >
+                Ver
+              </Button>
+            </li>
+          ))}
         </ul>
       )}
     </div>
   );
 }
 
-function CheckInOutcome({ result }: { result: CheckInResult }) {
-  if (!result.ok) {
+function PassCard({
+  scanned,
+  pending,
+  reason,
+  onReason,
+  onRegister,
+  onReceive,
+}: {
+  scanned: Scanned;
+  pending: boolean;
+  reason: string;
+  onReason: (value: string) => void;
+  onRegister: (overrideReason?: string) => void;
+  onReceive: (registrationId: string) => void;
+}) {
+  const { info, justRegistered } = scanned;
+
+  if (info.error === "not_found") {
     return (
-      <Notice
-        tone="error"
-        title={
-          result.reason === "not_found"
-            ? "Código no válido"
-            : "No puede ingresar"
-        }
-      >
-        {result.reason === "not_found"
-          ? "El código no existe o fue revocado."
-          : `${result.participant ?? "Esta persona"} pertenece a una inscripción que no está confirmada${
-              result.registrationStatus
-                ? ` (${STATUS_LABELS[result.registrationStatus]})`
-                : ""
-            }.`}
+      <Notice tone="error" title="Código no válido">
+        El código no existe o fue revocado.
       </Notice>
     );
   }
+  if (info.error === "not_confirmed") {
+    return (
+      <Notice tone="error" title="No puede ingresar">
+        {info.school ?? info.participant} pertenece a una inscripción que no
+        está confirmada
+        {info.registrationStatus
+          ? ` (${STATUS_LABELS[info.registrationStatus]})`
+          : ""}
+        .
+      </Notice>
+    );
+  }
+
+  const isGroup = info.kind === "group";
+  const done = info.already || justRegistered;
+  const tutorTotal = info.tutors.length + (info.representativeAttends ? 1 : 0);
+
   return (
-    <Notice
-      tone={result.already ? "warning" : "success"}
-      title={result.already ? "Ya había ingresado" : "Ingreso registrado"}
-    >
-      <p className="text-base font-bold">{result.participant}</p>
-      <p>
-        {[
-          result.role && ROLE_LABELS[result.role],
-          result.school,
-          result.referenceCode,
-          result.gate && formatGate(result.gate),
-          result.already && `ingresó a las ${formatTime(result.checkedInAt)}`,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </p>
-    </Notice>
+    <article className="grid gap-4 rounded-lg border-2 border-border bg-surface p-5">
+      {justRegistered && <Notice tone="success">Ingreso registrado.</Notice>}
+      {info.already && !justRegistered && (
+        <Notice tone="warning" title="Ya había ingresado">
+          {info.checkedInAt && `Ingresó a las ${formatTime(info.checkedInAt)}.`}
+        </Notice>
+      )}
+
+      <div>
+        <p className="text-xl font-bold">
+          {isGroup ? (info.school ?? info.participant) : info.participant}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {[
+            isGroup
+              ? `Representante: ${info.participant}`
+              : info.role && ROLE_LABELS[info.role],
+            !isGroup && info.school,
+            info.referenceCode,
+            info.gate && formatGate(info.gate),
+            info.arrivalAt && `llegada ${formatTime(info.arrivalAt)}`,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      </div>
+
+      {isGroup && (
+        <>
+          <dl className="flex flex-wrap gap-4">
+            <div className="rounded-md bg-tint-blue px-5 py-3">
+              <dt className="text-sm font-semibold">Escolares</dt>
+              <dd className="font-display text-4xl font-bold tabular-nums">
+                {info.students}
+              </dd>
+            </div>
+            <div className="rounded-md bg-tint-blue px-5 py-3">
+              <dt className="text-sm font-semibold">Tutores</dt>
+              <dd className="font-display text-4xl font-bold tabular-nums">
+                {tutorTotal}
+              </dd>
+            </div>
+          </dl>
+          <ul className="grid gap-1 text-sm">
+            {info.representativeAttends && (
+              <li>{info.participant} (representante)</li>
+            )}
+            {info.tutors.map((t) => (
+              <li key={`${t.docType}-${t.docNumber}`}>
+                {t.name} · {DOC_TYPE_LABELS[t.docType]} {t.docNumber}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {info.docsPending ? (
+        <div className="grid gap-3 rounded-md border-2 border-orange bg-tint-orange p-4">
+          <p className="font-bold">Documentos pendientes</p>
+          <p className="text-sm">
+            Revisa que traigan los documentos impresos y firmados.
+          </p>
+          <div>
+            <Button
+              size="sm"
+              disabled={pending || !info.registrationId}
+              onClick={() =>
+                info.registrationId && onReceive(info.registrationId)
+              }
+            >
+              Documentos recibidos
+            </Button>
+          </div>
+          {!done && (
+            <>
+              <label className="grid gap-1 text-sm font-semibold">
+                Si no los traen, motivo para dejarlos ingresar
+                <input
+                  value={reason}
+                  onChange={(e) => onReason(e.target.value)}
+                  maxLength={500}
+                  className={cn(fieldClasses, "py-2")}
+                />
+              </label>
+              <div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={pending || reason.trim().length < 5}
+                  onClick={() => onRegister(reason.trim())}
+                >
+                  Autorizar y registrar ingreso
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <p className="font-bold text-green-ink">Documentos recibidos.</p>
+      )}
+
+      {!done && !info.docsPending && (
+        <div>
+          <Button bolt disabled={pending} onClick={() => onRegister()}>
+            Registrar ingreso
+          </Button>
+        </div>
+      )}
+    </article>
   );
 }

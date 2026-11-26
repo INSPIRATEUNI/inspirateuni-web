@@ -149,8 +149,9 @@ SELECT lives_ok($$ SELECT public.confirm_selection((SELECT id FROM ids WHERE k =
 SELECT is((SELECT public.set_attendees((SELECT id FROM ids WHERE k = 'sB'), pg_temp.people(11, 1, 'chaperone')) ->> 'ok'), 'true', 'sB registra 11 visitantes y 1 acompañante');
 SELECT throws_ok(
   $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'sB'), 'v1') $$,
-  'P0001', 'Se necesitan al menos 2 acompañantes del colegio (hay 1)', '11 visitantes exigen 2 acompañantes'
+  'P0001', 'Completa los datos del representante', 'Un colegio exige los datos del representante'
 );
+UPDATE public.event_registrations SET representative_role = 'Director', representative_doc_type = 'dni', representative_doc_number = '40000000' WHERE id = (SELECT id FROM ids WHERE k = 'sB');
 SELECT is((SELECT public.set_attendees((SELECT id FROM ids WHERE k = 'sB'), pg_temp.people(11, 2, 'chaperone')) ->> 'ok'), 'true', 'sB completa con 2 acompañantes');
 SELECT is(
   (SELECT count(*)::int FROM public.registration_documents WHERE registration_id = (SELECT id FROM ids WHERE k = 'sB')),
@@ -160,10 +161,10 @@ SELECT throws_ok(
   $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'sB'), '') $$,
   'P0001', 'Debes aceptar el aviso de privacidad y la declaración de responsabilidad', 'Sin aceptar los términos no se envía'
 );
-SELECT is((SELECT public.set_attendees((SELECT id FROM ids WHERE k = 'sB'), pg_temp.people(10, 2, 'chaperone')) ->> 'ok'), 'true', 'Se puede cargar menos visitantes que los declarados...');
+SELECT is((SELECT public.set_attendees((SELECT id FROM ids WHERE k = 'sB'), pg_temp.people(10, 0, 'chaperone')) ->> 'ok'), 'true', 'Se guarda una lista sin tutores...');
 SELECT throws_ok(
   $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'sB'), 'v1') $$,
-  'P0001', 'Debes registrar exactamente 11 visitantes (hay 10)', '...pero al enviar deben ser exactamente los declarados'
+  'P0001', 'Registra al menos un tutor (el representante cuenta si asiste)', '...pero al enviar se exige al menos un tutor'
 );
 
 -- 4. Edad de los adultos (a la fecha del evento) ----------------------------------------------------------------------------

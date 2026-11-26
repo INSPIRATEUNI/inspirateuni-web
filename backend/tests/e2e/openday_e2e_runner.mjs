@@ -193,40 +193,19 @@ async function testSchoolFlow() {
   const confirmSel = await rpc("confirm_selection", { p_registration_id: regId }, schoolToken);
   logTest("confirm_selection bloquea recorridos y pasa a reserved", confirmSel.ok);
 
-  // 1.4 Registrar asistentes (15 escolares + 2 profesores acompañantes)
-  const attendees = [];
-  for (let i = 1; i <= 15; i++) {
-    attendees.push({
-      doc_type: "dni",
-      doc_number: `78${String(i).padStart(6, "0")}`,
-      first_name: `Alumno_${i}`,
-      last_name: "Escolar",
-      birth_date: "2009-05-10",
-      attendee_role: "visitor",
-    });
-  }
-  // Chaperones (>= 18 años, proporción 15/10 = 2 requeridos)
-  attendees.push({
-    doc_type: "dni",
-    doc_number: "48000001",
-    first_name: "Profesor",
-    last_name: "Uno",
-    birth_date: "1980-01-01",
-    attendee_role: "chaperone",
-    relationship: "Tutor",
-  });
-  attendees.push({
-    doc_type: "dni",
-    doc_number: "48000002",
-    first_name: "Profesor",
-    last_name: "Dos",
-    birth_date: "1982-05-15",
-    attendee_role: "chaperone",
-    relationship: "Coordinador",
-  });
-
-  const setAtt = await rpc("set_attendees", { p_registration_id: regId, p_people: attendees }, schoolToken);
-  logTest("set_attendees registra 15 alumnos y 2 acompañantes cumpliendo ratio", setAtt.ok && setAtt.data?.ok === true);
+  // 1.4 Representante y tutores (los escolares no se registran)
+  const setAtt = await rpc(
+    "save_school_people",
+    {
+      p_registration_id: regId,
+      p_representative: { role: "Director", doc_type: "dni", doc_number: "48000000", attends: true },
+      p_tutors: [
+        { doc_type: "dni", doc_number: "48000001", first_name: "Profesor", last_name: "Uno", birth_date: "1980-01-01" },
+      ],
+    },
+    schoolToken
+  );
+  logTest("save_school_people registra representante y tutor", setAtt.ok && setAtt.data?.ok === true);
 
   // 1.5 Registrar logística
   const setLog = await rpc(
@@ -304,13 +283,10 @@ async function testSchoolFlow() {
   );
   logTest("Staff ejecuta confirm_registration (confirmed)", confirmRes.ok);
 
-  // 1.13 Verificación de pases y códigos QR
-  const passes = await queryTable(
-    "event_attendees",
-    `registration_id=eq.${regId}&select=id,attendee_role,pass_id,event_passes(access_code,status)`
-  );
-  const allHavePasses = Array.isArray(passes) && passes.length === 17 && passes.every((p) => p.pass_id !== null);
-  logTest("Generación de 17 pases únicos con códigos en base32", allHavePasses, `${passes.length} pases emitidos`);
+  // 1.13 Una sola ficha para el colegio
+  const passes = await queryTable("registration_passes", `registration_id=eq.${regId}&select=access_code,status`);
+  const oneCode = Array.isArray(passes) && passes.length === 1;
+  logTest("Se genera un único código para el colegio", oneCode, `${passes.length} códigos`);
 
   return regId;
 }
@@ -371,29 +347,13 @@ async function testIndividualFlow() {
   );
   logTest("set_attendees con menor + tutor obligatorio", setMinorAtt.ok && setMinorAtt.data?.ok === true);
 
-  // Documentos de menor (Edge Function con service role)
+  // PDF consolidado de la persona libre (Edge Function con service role)
   await rpc("record_registration_document", {
     p_registration_id: minorRegId,
     p_actor_id: MINOR_USER_ID,
-    p_kind: "consent",
+    p_kind: "individual_consolidated",
     p_drive_file_id: "drive_c1",
-    p_file_name: "consent.pdf",
-    p_size_bytes: 100000,
-  });
-  await rpc("record_registration_document", {
-    p_registration_id: minorRegId,
-    p_actor_id: MINOR_USER_ID,
-    p_kind: "commitment_letter",
-    p_drive_file_id: "drive_c2",
-    p_file_name: "carta.pdf",
-    p_size_bytes: 100000,
-  });
-  await rpc("record_registration_document", {
-    p_registration_id: minorRegId,
-    p_actor_id: MINOR_USER_ID,
-    p_kind: "guardian_declaration",
-    p_drive_file_id: "drive_c3",
-    p_file_name: "declaracion_jurada.pdf",
+    p_file_name: "documentos.pdf",
     p_size_bytes: 100000,
   });
 

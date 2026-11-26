@@ -168,7 +168,8 @@ INSERT INTO ids SELECT 'doc_school_v1', public.record_registration_document(
   2500000
 );
 
--- 2.7 Enviar inscripción completa
+-- 2.7 Enviar inscripción completa (con los datos del representante)
+UPDATE public.event_registrations SET representative_role = 'Director', representative_doc_type = 'dni', representative_doc_number = '40000000' WHERE id = (SELECT id FROM ids WHERE k = 'school_reg');
 SELECT lives_ok(
   $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'school_reg'), 'v1.0') $$,
   '[Colegio] submit_registration envía la inscripción completa'
@@ -264,18 +265,15 @@ SELECT is(
 );
 
 SELECT is(
-  (SELECT count(*)::int FROM public.event_attendees WHERE registration_id = (SELECT id FROM ids WHERE k = 'school_reg') AND pass_id IS NOT NULL),
-  17,
-  '[Colegio] Se emite un pase activo por cada uno de los 17 asistentes (alumnos y chaperones)'
+  (SELECT count(*)::int FROM public.registration_passes WHERE registration_id = (SELECT id FROM ids WHERE k = 'school_reg') AND status = 'active'),
+  1,
+  '[Colegio] Se emite una sola ficha para el colegio'
 );
 
-SELECT is(
-  (SELECT count(DISTINCT p.access_code)::int
-   FROM public.event_attendees ea
-   JOIN public.event_passes p ON p.id = ea.pass_id
-   WHERE ea.registration_id = (SELECT id FROM ids WHERE k = 'school_reg')),
-  17,
-  '[Colegio] Todos los códigos de acceso de pases emitidos son únicos (Crockford base32)'
+SELECT matches(
+  (SELECT access_code FROM public.registration_passes WHERE registration_id = (SELECT id FROM ids WHERE k = 'school_reg')),
+  '^[0-9A-HJKMNP-TV-Z]{8}$',
+  '[Colegio] El código del colegio usa el formato Crockford base32'
 );
 
 -- ==============================================================================================
@@ -319,9 +317,7 @@ SELECT is(
 -- Insertar documentos requeridos para probar validación de apoderado
 INSERT INTO public.registration_documents (registration_id, kind, drive_file_id, file_name)
 VALUES
-  ((SELECT id FROM ids WHERE k = 'minor_reg'), 'consent', 'drive_c1', 'consent.pdf'),
-  ((SELECT id FROM ids WHERE k = 'minor_reg'), 'commitment_letter', 'drive_c2', 'carta.pdf'),
-  ((SELECT id FROM ids WHERE k = 'minor_reg'), 'guardian_declaration', 'drive_c3', 'declaracion.pdf');
+  ((SELECT id FROM ids WHERE k = 'minor_reg'), 'individual_consolidated', 'drive_c1', 'menor.pdf');
 
 SELECT throws_ok(
   $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'minor_reg'), 'v1.0') $$,
@@ -366,11 +362,10 @@ SELECT is(
   '[Adulto] Registra visitante mayor de edad'
 );
 
--- Adulto solo requiere consent y commitment_letter
+-- Una persona libre sube un solo PDF consolidado
 INSERT INTO public.registration_documents (registration_id, kind, drive_file_id, file_name)
 VALUES
-  ((SELECT id FROM ids WHERE k = 'adult_reg'), 'consent', 'drive_a1', 'consent_adult.pdf'),
-  ((SELECT id FROM ids WHERE k = 'adult_reg'), 'commitment_letter', 'drive_a2', 'carta_adult.pdf');
+  ((SELECT id FROM ids WHERE k = 'adult_reg'), 'individual_consolidated', 'drive_a1', 'adulto.pdf');
 
 SELECT lives_ok(
   $$ SELECT public.submit_registration((SELECT id FROM ids WHERE k = 'adult_reg'), 'v1.0') $$,
