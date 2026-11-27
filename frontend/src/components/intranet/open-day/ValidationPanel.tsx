@@ -26,7 +26,7 @@ export type ValidationDocument = {
 };
 
 /** Puertas de ingreso disponibles (se elige una, no se escribe). */
-const GATES = ["Puerta 3", "Puerta 4", "Puerta 5"];
+const GATES = ["Puerta 3", "Puerta 5"];
 
 type ValidationPanelProps = {
   registrationId: string;

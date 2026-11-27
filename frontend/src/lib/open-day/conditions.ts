@@ -135,8 +135,6 @@ export function conditionsFor(
 type DownloadableDocument = {
   kind: TemplateKind;
   title: string;
-  /** Solo se pide si en la inscripción hay menores de edad. */
-  onlyMinors?: boolean;
 };
 
 /**
@@ -172,8 +170,7 @@ export const DOCUMENTS: Record<RegistrationKind, DownloadableDocument[]> = {
     { kind: "consent", title: "Autorización de uso de imagen" },
     {
       kind: "minor_authorization",
-      title: "Autorización de participación del menor",
-      onlyMinors: true,
+      title: "Autorización de participación del menor (solo si hay menores)",
     },
   ],
 };
@@ -186,10 +183,9 @@ export function templateLabel(audience: RegistrationKind, kind: TemplateKind) {
 /** Las plantillas que le tocan a una inscripción, ya ordenadas. */
 export function templatesFor<T extends { kind: TemplateKind }>(
   audience: RegistrationKind,
-  hasMinors: boolean,
   templates: T[],
 ): T[] {
-  return DOCUMENTS[audience]
-    .filter((d) => hasMinors || !d.onlyMinors)
-    .flatMap((d) => templates.filter((t) => t.kind === d.kind));
+  return DOCUMENTS[audience].flatMap((d) =>
+    templates.filter((t) => t.kind === d.kind),
+  );
 }

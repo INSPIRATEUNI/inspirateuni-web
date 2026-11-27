@@ -43,6 +43,7 @@ import { ConditionsStep } from "./ConditionsStep";
 import { IndividualDetailsStep, SchoolDetailsStep } from "./DetailsStep";
 import { useAvailability, useRegistration, useSessionUser } from "./hooks";
 import { LogisticsStep } from "./LogisticsStep";
+import { LateDocuments } from "./MyRegistrationClient";
 import { Notice } from "./Notice";
 import { OtpStep } from "./OtpStep";
 import { PeopleEditor } from "./PeopleEditor";
@@ -188,9 +189,11 @@ export function RegistrationWizard({
     return (
       <div className="grid gap-6">
         <SubmittedPanel registration={registration} />
-        <BringDocumentsNotice
-          kind={registration.kind}
-          hasMinors={includesMinors(registration, event.eventDate)}
+        <BringDocumentsNotice kind={registration.kind} />
+        <LateDocuments
+          event={event}
+          registration={registration}
+          onChanged={reload}
         />
         <ChatBox registrationId={registration.id} perspective="owner" />
       </div>

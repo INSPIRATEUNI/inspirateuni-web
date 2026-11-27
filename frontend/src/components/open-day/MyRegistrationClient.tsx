@@ -117,23 +117,27 @@ export function EditSchoolPeople({
 export function LateDocuments({
   event,
   registration,
+  onChanged,
 }: {
   event: OpenDayEvent;
   registration: Registration;
+  /** El asistente recarga su propia copia; "Mi inscripción" refresca la página. */
+  onChanged?: () => Promise<unknown>;
 }) {
   const router = useRouter();
   return (
     <details className="rounded-lg border-2 border-border p-4">
       <summary className="cursor-pointer font-bold">
         {registration.documents.length === 0
-          ? "Subir el PDF de documentos (opcional)"
+          ? "¿Quieres adelantar? Sube tus documentos (opcional)"
           : "Reemplazar el PDF de documentos"}
       </summary>
       <div className="mt-4">
         <DocumentsStep
           event={event}
           registration={registration}
-          onChanged={async () => router.refresh()}
+          onChanged={onChanged ?? (async () => router.refresh())}
+          hideTemplates
         />
       </div>
     </details>

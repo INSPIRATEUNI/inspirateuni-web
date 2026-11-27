@@ -12,15 +12,9 @@ import { createClient } from "@/lib/supabase/client";
  * Se muestra una vez enviada la inscripción (colegios y personas libres): descargar
  * los documentos y llevarlos impresos, completos y firmados el día del evento.
  */
-export function BringDocumentsNotice({
-  kind,
-  hasMinors,
-}: {
-  kind: RegistrationKind;
-  hasMinors: boolean;
-}) {
+export function BringDocumentsNotice({ kind }: { kind: RegistrationKind }) {
   const [all, setTemplates] = useState<DocumentTemplate[]>([]);
-  const templates = templatesFor(kind, hasMinors, all);
+  const templates = templatesFor(kind, all);
 
   useEffect(() => {
     fetchTemplates(createClient(), kind).then(setTemplates);
