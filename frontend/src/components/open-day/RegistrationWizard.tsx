@@ -23,12 +23,12 @@ import {
   TIER_LABELS,
 } from "@/lib/open-day/constants";
 import { fetchMyRegistrations, isRegistrationOpen } from "@/lib/open-day/data";
+import { formatDateTime, formatTimeRange } from "@/lib/open-day/format";
 import {
-  formatDateTime,
-  formatTimeRange,
-  isMinorOn,
-} from "@/lib/open-day/format";
-import { peopleComplete, tutorCount } from "@/lib/open-day/people";
+  includesMinors,
+  peopleComplete,
+  tutorCount,
+} from "@/lib/open-day/people";
 import type {
   LogisticsOption,
   OpenDayEvent,
@@ -188,7 +188,10 @@ export function RegistrationWizard({
     return (
       <div className="grid gap-6">
         <SubmittedPanel registration={registration} />
-        <BringDocumentsNotice kind={registration.kind} />
+        <BringDocumentsNotice
+          kind={registration.kind}
+          hasMinors={includesMinors(registration, event.eventDate)}
+        />
         <ChatBox registrationId={registration.id} perspective="owner" />
       </div>
     );
@@ -236,9 +239,7 @@ export function RegistrationWizard({
     ) : null;
 
   const hasMinors = Boolean(
-    registration?.attendees.some(
-      (a) => a.birthDate && isMinorOn(a.birthDate, event.eventDate),
-    ),
+    registration && includesMinors(registration, event.eventDate),
   );
   const allAccepted = conditionsFor(kind, hasMinors).every((c) =>
     accepted.includes(c.template),

@@ -152,6 +152,8 @@ const templateKind = z.enum([
   "consent",
   "guardian_declaration",
   "commitment_letter",
+  "presentation_letter",
+  "minor_authorization",
 ]);
 
 const templateAudience = z.enum(["school", "individual"]);

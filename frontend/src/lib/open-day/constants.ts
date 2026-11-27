@@ -44,6 +44,8 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
 export const DOCUMENT_LABELS: Record<DocumentKind | "credentials", string> = {
   school_consolidated: "Cartas del colegio (un solo PDF)",
   individual_consolidated: "Documentos firmados (un solo PDF)",
+  presentation_letter: "Carta de presentación y autorización de delegación",
+  minor_authorization: "Autorización de participación del menor",
   consent: "Autorización de uso de imagen",
   guardian_declaration: "Cuidado de instalaciones y bienes",
   commitment_letter: "Carta de compromiso",
@@ -90,8 +92,10 @@ export const ACTIVE_STATUSES: RegistrationStatus[] = [
  * El PDF que se puede subir según el tipo de inscripción. Es opcional: los
  * documentos firmados se llevan impresos el día del evento en cualquier caso.
  */
-export function uploadKind(kind: "school" | "individual"): DocumentKind {
-  return kind === "school" ? "school_consolidated" : "individual_consolidated";
+export function uploadKind(kind: "school" | "individual") {
+  return kind === "school"
+    ? ("school_consolidated" as const)
+    : ("individual_consolidated" as const);
 }
 
 /** Enlace de descarga directa de una plantilla compartida en Drive. */

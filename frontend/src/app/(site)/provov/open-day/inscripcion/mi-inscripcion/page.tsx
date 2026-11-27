@@ -31,7 +31,7 @@ import {
   formatTime,
   formatTimeRange,
 } from "@/lib/open-day/format";
-import { tutorCount } from "@/lib/open-day/people";
+import { includesMinors, tutorCount } from "@/lib/open-day/people";
 import { getSessionUser } from "@/lib/open-day/server";
 import type {
   OpenDayEvent,
@@ -310,7 +310,12 @@ function RegistrationCard({
 
       {["submitted", "docs_observed", "confirmed"].includes(
         registration.status,
-      ) && <BringDocumentsNotice kind={registration.kind} />}
+      ) && (
+        <BringDocumentsNotice
+          kind={registration.kind}
+          hasMinors={includesMinors(registration, event.eventDate)}
+        />
+      )}
 
       {registration.kind === "school" &&
         (registration.status === "submitted" ||

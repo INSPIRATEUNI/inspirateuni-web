@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircleIcon, ClipboardIcon } from "@/components/site/Icons";
 import { cn } from "@/lib/cn";
-import { templateLabel } from "@/lib/open-day/conditions";
+import { templateLabel, templatesFor } from "@/lib/open-day/conditions";
 import {
   DOCUMENT_LABELS,
   driveDownloadUrl,
@@ -12,6 +12,7 @@ import {
 import { fetchTemplates } from "@/lib/open-day/data";
 import { messageFor } from "@/lib/open-day/errors";
 import { formatBytes, formatDateTime } from "@/lib/open-day/format";
+import { includesMinors } from "@/lib/open-day/people";
 import type {
   DocumentKind,
   DocumentTemplate,
@@ -25,10 +26,13 @@ import { Notice } from "./Notice";
 const DOCUMENT_HINTS: Record<DocumentKind, string> = {
   school_consolidated: "Junta en un solo PDF todas las cartas firmadas.",
   individual_consolidated:
-    "Junta en un solo PDF la autorización de uso de datos y la carta de compromiso firmadas de todas las personas. Si algún visitante es menor de edad, incluye la declaración firmada por su apoderado.",
+    "Junta en un solo PDF la autorización de uso de datos y la carta de compromiso firmadas de todas las personas. Si hay menores de edad, incluye la autorización de participación de cada uno.",
   consent: "Autorización para el uso de datos personales, firmada.",
-  commitment_letter: "Carta de compromiso de buena conducta, firmada.",
-  guardian_declaration: "Declaración firmada por la madre, padre o apoderado.",
+  commitment_letter: "Carta de compromiso, firmada.",
+  guardian_declaration: "Declaración jurada de cuidado, firmada.",
+  presentation_letter: "Carta de presentación del colegio, firmada y sellada.",
+  minor_authorization:
+    "Autorización firmada por la madre, padre o apoderado del menor.",
 };
 
 type DocumentsStepProps = {
@@ -108,7 +112,11 @@ export function DocumentsStep({
             aquí abajo.
           </p>
           <ul className="flex flex-wrap gap-3">
-            {templates.map((template) => (
+            {templatesFor(
+              registration.kind,
+              includesMinors(registration, event.eventDate),
+              templates,
+            ).map((template) => (
               <li key={template.kind}>
                 <a
                   href={driveDownloadUrl(template.driveFileId)}
@@ -157,7 +165,7 @@ function DocumentUpload({
   registration,
   onUploaded,
 }: {
-  kind: DocumentKind;
+  kind: ReturnType<typeof uploadKind>;
   event: OpenDayEvent;
   registration: Registration;
   onUploaded: () => Promise<unknown>;

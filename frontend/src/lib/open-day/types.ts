@@ -24,7 +24,9 @@ export type DocumentKind =
   | "individual_consolidated"
   | "consent"
   | "guardian_declaration"
-  | "commitment_letter";
+  | "commitment_letter"
+  | "presentation_letter"
+  | "minor_authorization";
 
 /** Configuración pública del evento (anon la puede leer). */
 export type OpenDayEvent = {

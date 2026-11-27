@@ -1,4 +1,12 @@
+import { isMinorOn } from "./format";
 import type { Registration } from "./types";
+
+/** Si alguien de la inscripción es menor de edad el día del evento. */
+export function includesMinors(registration: Registration, eventDate: string) {
+  return registration.attendees.some(
+    (a) => a.birthDate && isMinorOn(a.birthDate, eventDate),
+  );
+}
 
 /** Tutores de un colegio: los de la lista y el representante si asiste. */
 export function tutorCount(registration: Registration) {
