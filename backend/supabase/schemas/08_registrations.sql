@@ -8,7 +8,7 @@ create type public.enrollment_status as enum ('held', 'reserved', 'released');
 create type public.pass_status as enum ('active', 'revoked');
 create type public.document_kind as enum (
   'school_consolidated', 'consent', 'guardian_declaration', 'commitment_letter', 'credentials',
-  'individual_consolidated'
+  'individual_consolidated', 'presentation_letter', 'minor_authorization'
 );
 create type public.email_status as enum ('pending', 'sent', 'failed');
 
@@ -208,7 +208,9 @@ comment on table public.registration_documents is 'PDFs en Google Drive (drive_f
 create table public.document_templates (
   id uuid primary key default gen_random_uuid(),
   audience public.registration_kind not null default 'individual',
-  kind public.document_kind not null check (kind in ('consent', 'guardian_declaration', 'commitment_letter')),
+  -- Se excluyen los tipos que no son plantillas (así un tipo nuevo no obliga a tocar el check en la
+  -- misma transacción que lo agrega al enum)
+  kind public.document_kind not null check (kind not in ('school_consolidated', 'individual_consolidated', 'credentials')),
   version integer not null check (version > 0),
   drive_file_id text not null,
   active boolean not null default false,

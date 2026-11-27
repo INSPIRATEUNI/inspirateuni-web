@@ -12,7 +12,6 @@ import {
 import { fetchTemplates } from "@/lib/open-day/data";
 import { messageFor } from "@/lib/open-day/errors";
 import { formatBytes, formatDateTime } from "@/lib/open-day/format";
-import { includesMinors } from "@/lib/open-day/people";
 import type {
   DocumentKind,
   DocumentTemplate,
@@ -41,6 +40,8 @@ type DocumentsStepProps = {
   onChanged: () => Promise<unknown>;
   /** Solo muestra los documentos observados (para reemplazarlos). */
   onlyObserved?: boolean;
+  /** Cuando las descargas ya se muestran al lado (`BringDocumentsNotice`). */
+  hideTemplates?: boolean;
 };
 
 /** Plantillas descargables y subida opcional del PDF consolidado. */
@@ -49,6 +50,7 @@ export function DocumentsStep({
   registration,
   onChanged,
   onlyObserved = false,
+  hideTemplates = false,
 }: DocumentsStepProps) {
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
 
@@ -90,7 +92,7 @@ export function DocumentsStep({
         </section>
       )}
 
-      {!onlyObserved && templates.length > 0 && (
+      {!onlyObserved && !hideTemplates && templates.length > 0 && (
         <section
           aria-labelledby="templates-title"
           className="grid gap-4 rounded-lg border-2 border-orange bg-tint-orange p-5 shadow-soft"
@@ -112,11 +114,7 @@ export function DocumentsStep({
             aquí abajo.
           </p>
           <ul className="flex flex-wrap gap-3">
-            {templatesFor(
-              registration.kind,
-              includesMinors(registration, event.eventDate),
-              templates,
-            ).map((template) => (
+            {templatesFor(registration.kind, templates).map((template) => (
               <li key={template.kind}>
                 <a
                   href={driveDownloadUrl(template.driveFileId)}
