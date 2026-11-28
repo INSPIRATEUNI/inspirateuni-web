@@ -244,8 +244,8 @@ export function IndividualDetailsStep({
       </Field>
       <Field
         id="ind-visitors"
-        label="¿Cuántas personas asistirán?"
-        hint={`Hasta ${event.maxVisitorsIndividual}, sin contar a los adultos que acompañan. Luego no podrás cambiar la cantidad.`}
+        label="¿Cuántos postulantes o visitantes van?"
+        hint={`Tu acompañante sí puede venir, pero no se cuenta aquí: lo registrarás en el siguiente paso de personas. Ejemplo: si vas tú con tu mamá, pon 1. Máximo ${event.maxVisitorsIndividual}.`}
       >
         <Input
           id="ind-visitors"
