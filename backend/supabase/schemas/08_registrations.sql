@@ -128,6 +128,7 @@ create table public.event_attendees (
   event_id uuid not null references public.events (id) on delete restrict,
   attendee_role public.attendee_role not null,
   relationship text,
+  active boolean not null default true,
   created_at timestamptz not null default now(),
   unique (registration_id, participant_id)
 );
@@ -136,15 +137,17 @@ create index event_attendees_participant_id_idx on public.event_attendees (parti
 create index event_attendees_pass_id_idx on public.event_attendees (pass_id);
 create index event_attendees_event_id_idx on public.event_attendees (event_id);
 
--- Un visitante está en una sola inscripción por evento
+-- Un visitante está en una sola inscripción viva por evento (las vencidas y canceladas no cuentan)
 create unique index event_attendees_visitor_event_idx
   on public.event_attendees (event_id, participant_id)
-  where attendee_role = 'visitor';
+  where attendee_role = 'visitor' and active;
 
--- Un acompañante del colegio pertenece a una sola inscripción por evento
+-- Un acompañante del colegio pertenece a una sola inscripción viva por evento
 create unique index event_attendees_chaperone_event_idx
   on public.event_attendees (event_id, participant_id)
-  where attendee_role = 'chaperone';
+  where attendee_role = 'chaperone' and active;
+
+comment on column public.event_attendees.active is 'false cuando la inscripción venció o se canceló: la fila queda como historial y la persona puede inscribirse de nuevo. La fija un trigger.';
 
 comment on column public.event_attendees.event_id is 'Copia de event_registrations.event_id, la fija un trigger (permite los índices únicos por evento).';
 comment on column public.event_attendees.relationship is 'Texto libre: profesor, madre, chofer del bus...';
@@ -355,6 +358,29 @@ revoke execute on function public.event_attendees_guard() from public, anon, aut
 create trigger event_attendees_guard
 before insert or update on public.event_attendees
 for each row execute function public.event_attendees_guard();
+
+-- Al vencer o cancelarse una inscripción, sus personas quedan libres para inscribirse otra vez
+create function public.event_registrations_release_people()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.event_attendees
+  set active = new.status not in ('expired', 'cancelled')
+  where registration_id = new.id;
+  return null;
+end;
+$$;
+
+revoke execute on function public.event_registrations_release_people() from public, anon, authenticated;
+
+create trigger event_registrations_release_people
+after update of status on public.event_registrations
+for each row
+when ((old.status in ('expired', 'cancelled')) is distinct from (new.status in ('expired', 'cancelled')))
+execute function public.event_registrations_release_people();
 
 -- Copia de tier y time_range desde la sesión; la sesión debe ser del mismo evento y estar abierta
 create function public.tour_enrollments_guard()

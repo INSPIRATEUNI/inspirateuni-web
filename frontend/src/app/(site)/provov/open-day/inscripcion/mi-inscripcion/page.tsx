@@ -23,7 +23,11 @@ import {
   STATUS_LABELS,
   STATUS_TONES,
 } from "@/lib/open-day/constants";
-import { fetchEvent, fetchMyRegistrations } from "@/lib/open-day/data";
+import {
+  fetchEvent,
+  fetchMyRegistrations,
+  isRegistrationOpen,
+} from "@/lib/open-day/data";
 import {
   formatDateTime,
   formatEventDate,
@@ -343,6 +347,11 @@ function RegistrationCard({
             Ver e imprimir códigos
           </Button>
         )}
+        {(registration.status === "expired" ||
+          registration.status === "cancelled") &&
+          isRegistrationOpen(event) && (
+            <Button href={wizardRoute as Route}>Inscribirme de nuevo</Button>
+          )}
       </div>
     </article>
   );
