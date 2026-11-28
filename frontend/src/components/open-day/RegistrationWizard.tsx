@@ -60,6 +60,9 @@ type RegistrationWizardProps = {
   registrationId: string | null;
 };
 
+/** WhatsApp de ayuda para colegios que no pueden entrar con su correo. */
+const SCHOOL_HELP_WHATSAPP_URL = "https://wa.me/51923526259";
+
 type ReservedPhase = "people" | "conditions" | "logistics" | "submit";
 
 const SELECTION_STATUSES = new Set(["draft", "held", "needs_reassignment"]);
@@ -258,7 +261,26 @@ export function RegistrationWizard({
       title: "Ingresa con tu correo",
       icon: <ClipboardIcon />,
       status: stepStatus(0, current),
-      content: <OtpStep onVerified={() => router.refresh()} />,
+      content: (
+        <div className="grid gap-5">
+          <OtpStep onVerified={() => router.refresh()} />
+          {isSchool && (
+            <Notice tone="info" title="¿Problemas con tu correo?">
+              Si no te llega el código u ocurre otro problema, escríbenos por
+              WhatsApp al{" "}
+              <a
+                href={SCHOOL_HELP_WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold underline"
+              >
+                923 526 259
+              </a>{" "}
+              para atenderte.
+            </Notice>
+          )}
+        </div>
+      ),
       summary: (
         <p>
           Ingresaste como{" "}
