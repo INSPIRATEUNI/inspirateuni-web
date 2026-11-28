@@ -125,6 +125,66 @@ export function VisitorsCountControl({
   );
 }
 
+/**
+ * Aviso cuando faltan visitantes y ya hay un acompañante: el acompañante no cuenta.
+ * Si el dueño solo quería llevar compañía, ajusta la cantidad con un clic.
+ */
+function CompanionNotice({
+  registration,
+  visitors,
+  onChanged,
+}: {
+  registration: Registration;
+  visitors: number;
+  onChanged?: () => Promise<unknown>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    setBusy(true);
+    setError(null);
+    const result = await setExpectedVisitors(registration.id, visitors);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error.message);
+      return;
+    }
+    await onChanged?.();
+  }
+
+  return (
+    <Notice
+      tone="warning"
+      title="Tu acompañante sí puede venir, pero no cuenta como visitante"
+    >
+      <p>
+        Declaraste {registration.expectedVisitors} visitantes y en la lista hay{" "}
+        {visitors}. El adulto acompañante no se cuenta entre los postulantes o
+        visitantes.
+      </p>
+      {visitors === 0 ? (
+        <p>Marca como "Visitante" a quien hará el recorrido.</p>
+      ) : (
+        <p>
+          Si solo{" "}
+          {visitors === 1 ? "va 1 visitante" : `van ${visitors} visitantes`} con
+          su acompañante, deja la cantidad en {visitors} y luego pulsa "Guardar
+          personas". Si falta otro visitante, agrégalo.
+        </p>
+      )}
+      {visitors > 0 && onChanged && (
+        <div className="mt-2">
+          <Button type="button" size="sm" onClick={apply} disabled={busy}>
+            {busy ? "Guardando…" : `Dejar la cantidad en ${visitors}`}
+          </Button>
+        </div>
+      )}
+      {error && <p className="mt-2 font-bold">{error}</p>}
+    </Notice>
+  );
+}
+
 const cellInput = cn(fieldClasses, "min-w-0 px-2.5 py-2 text-sm");
 
 function initialPeople(registration: Registration): PersonValues[] {
@@ -194,6 +254,10 @@ export function PeopleEditor({
       isMinorOn(p.birthDate, event.eventDate),
   );
 
+  // Error frecuente: declarar 2 contando al adulto que solo acompaña
+  const companionCounted =
+    adults > 0 && visitors < registration.expectedVisitors;
+
   const showErrors = () =>
     setTimeout(
       () =>
@@ -258,6 +322,11 @@ export function PeopleEditor({
         />
       )}
 
+      <Notice tone="info" title="¿Vienes con un acompañante?">
+        Sí puede venir contigo: regístralo como "Adulto acompañante". No se
+        cuenta como postulante o visitante.
+      </Notice>
+
       <ul className="flex flex-wrap gap-3" aria-label="Resumen de la lista">
         {counters.map((counter) => (
           <li
@@ -274,6 +343,14 @@ export function PeopleEditor({
           </li>
         ))}
       </ul>
+
+      {companionCounted && (
+        <CompanionNotice
+          registration={registration}
+          visitors={visitors}
+          onChanged={onVisitorsChanged}
+        />
+      )}
 
       {fields.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border-2 border-border">
@@ -453,16 +530,14 @@ export function PeopleEditor({
           <PlusIcon className="size-4" />
           Agregar visitante
         </Button>
-        {(minorVisitor || adults > 0) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => append(emptyPerson("guardian"))}
-          >
-            <PlusIcon className="size-4" />
-            Agregar adulto acompañante
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => append(emptyPerson("guardian"))}
+        >
+          <PlusIcon className="size-4" />
+          Agregar adulto acompañante
+        </Button>
       </div>
 
       {saved && !isDirty && (
